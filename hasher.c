@@ -75,6 +75,7 @@ static void init(void)
 }
 
 #define ROTL(w,s) ((w) << (s) | (w) >> (32-s))
+#define ROTR(w,s) ((w) >> (s) | (w) << (32-s))
 
 static void next(const BYTE ba[NI*SW])
 {
@@ -111,7 +112,7 @@ static void next(const BYTE ba[NI*SW])
 #define E H.w[4]
 		j = i/20;
 		switch (j) {
-		case 0: t = (B & C) | (~B & D); break; // Ch(B,C,D)
+		case 0: t = (B & C) | (~B & D); break; // Cho(B,C,D)
 		case 3:
 		case 1: t = B ^ C ^ D; break; // Par(B,C,D)
 		case 2: t = (B & C) | (B & D) | (C & D); break; // Maj(B,C,D)
@@ -120,7 +121,11 @@ static void next(const BYTE ba[NI*SW])
 		t += ROTL(A,5) + E + W.w[i] + K[j];
 		E = D;
 		D = C;
+#if 0
 		C = ROTL(B,30);
+#else
+		C = ROTR(B,2);
+#endif
 		B = A;
 		A = t;
 #undef A
