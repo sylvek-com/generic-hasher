@@ -74,8 +74,8 @@ static void init(void)
 	size = 0ull;
 }
 
-#define ROTL(w,s) ((w) << (s) | (w) >> (32-s))
-#define ROTR(w,s) ((w) >> (s) | (w) << (32-s))
+#define ROTL(w,s) ((w) << (s) | (w) >> (32-(s)))
+#define ROTR(w,s) ((w) >> (s) | (w) << (32-(s)))
 
 static void next(const BYTE ba[NI*SW])
 {
@@ -107,9 +107,9 @@ static void next(const BYTE ba[NI*SW])
 	for (i = 0; i < NS; ++i) {
 #define A H.w[0]
 #define B H.w[1]
-#define C H.w[2]
-#define D H.w[3]
-#define E H.w[4]
+#define C ROTR(H.w[2],2)
+#define D ROTR(H.w[3],2)
+#define E ROTR(H.w[4],2)
 		j = i/20;
 		switch (j) {
 		case 0: t = (B & C) | (~B & D); break; // Cho(B,C,D)
@@ -119,13 +119,9 @@ static void next(const BYTE ba[NI*SW])
 		default: abort();
 		}
 		t += ROTL(A,5) + E + W.w[i] + K[j];
-		E = D;
-		D = C;
-#if 0
-		C = ROTL(B,30);
-#else
-		C = ROTR(B,2);
-#endif
+		H.w[4] = H.w[3];
+		H.w[3] = H.w[2];
+		H.w[2] = H.w[1];
 		B = A;
 		A = t;
 #undef A
@@ -138,7 +134,7 @@ static void next(const BYTE ba[NI*SW])
 #endif
 	}
 	for (i = 0; i < NO; ++i)
-		accu.w[i] += H.w[i];
+		accu.w[i] += (i<=1) ? H.w[i] : ROTR(H.w[i],2);
 	size += NI*SW;
 }
 
