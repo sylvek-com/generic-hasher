@@ -12,22 +12,9 @@
 #define NS 80
 #define SHA0 0
 
-union ib {
-	WORD w[NI];
-	BYTE b[NI*SW];
-};
+static WORD accu[NO];
 
-union ob {
-	WORD w[NO];
-	BYTE b[NO*SW];
-} accu;
-
-SIZE size;
-
-union sb {
-	WORD w[NS];
-	BYTE b[NS*SW];
-};
+static SIZE size;
 
 static WORD iv[NO] = {
 0x67452301,
@@ -44,10 +31,11 @@ static WORD K[NS/20] = {
 0xCA62C1D6,
 };
  
+#define BA(w) ((BYTE*)&((w)[0]))
+
 static void print(const WORD wa[],int nw,const char sa[])
 {
 	int i,j;
-	const BYTE *ba = (BYTE*)wa;
 
 	for (i = 0; i < nw; ++i) {
 #if BYTE_ORDER == BIG_ENDIAN
@@ -57,7 +45,7 @@ static void print(const WORD wa[],int nw,const char sa[])
 #else
 		for (;;)
 #endif
-			printf("%02x",ba[i*SW+j]);
+			printf("%02x",BA(wa)[i*SW+j]);
 #if STEP
 		putc(' ',stdout);
 #endif
@@ -70,7 +58,7 @@ static void init(void)
 	int i;
 
 	for (i = 0; i < NO; ++i)
-		accu.w[i] = iv[i];
+		accu[i] = iv[i];
 	size = 0ull;
 }
 
@@ -80,8 +68,8 @@ static void init(void)
 static void next(const BYTE ba[NI*SW])
 {
 	int i,j;
-	union sb W;
-	union ob H;
+	WORD W[NS];
+	WORD H[NO];
 	WORD t;
 
 	for (i = 0; i < NI; ++i)
@@ -92,24 +80,24 @@ static void next(const BYTE ba[NI*SW])
 #else
 		for (;;)
 #endif
-			W.b[i*SW+j] = *ba++;
+			BA(W)[i*SW+j] = *ba++;
 #if STEP
-	print(W.w,NI,"input");
+	print(W,NI,"input");
 #endif
 	for (i = NI; i < NS; ++i)
 #if SHA0
-		W.w[i] = W.w[i-3] ^ W.w[i-8] ^ W.w[i-14] ^ W.w[i-16];
+		W[i] = W[i-3] ^ W[i-8] ^ W[i-14] ^ W[i-16];
 #else
-		W.w[i] = ROTL(W.w[i-3] ^ W.w[i-8] ^ W.w[i-14] ^ W.w[i-16],1);
+		W[i] = ROTL(W[i-3] ^ W[i-8] ^ W[i-14] ^ W[i-16],1);
 #endif
 	for (i = 0; i < NO; ++i)
-		H.w[i] = accu.w[i];
+		H[i] = accu[i];
 	for (i = 0; i < NS; ++i) {
-#define A H.w[0]
-#define B H.w[1]
-#define C H.w[2]
-#define D H.w[3]
-#define E H.w[4]
+#define A H[0]
+#define B H[1]
+#define C H[2]
+#define D H[3]
+#define E H[4]
 		j = i/20;
 		switch (j) {
 		case 0: t = (B & C) | (~B & D); break; // Cho(B,C,D)
@@ -118,7 +106,7 @@ static void next(const BYTE ba[NI*SW])
 		case 2: t = (B & C) | (B & D) | (C & D); break; // Maj(B,C,D)
 		default: abort();
 		}
-		t += ROTL(A,5) + E + W.w[i] + K[j];
+		t += ROTL(A,5) + E + W[i] + K[j];
 		E = D;
 		D = C;
 #if 0
@@ -134,18 +122,18 @@ static void next(const BYTE ba[NI*SW])
 #undef D
 #undef E
 #if STEP
-		print(H.w,NO,"round");
+		print(H,NO,"round");
 #endif
 	}
 	for (i = 0; i < NO; ++i)
-		accu.w[i] += H.w[i];
+		accu[i] += H[i];
 	size += NI*SW;
 }
 
 static void last(const BYTE ba[NI*SW],size_t nb)
 {
 	int i,j,k,l;
-	BYTE temp[2*sizeof(union ib)];
+	BYTE temp[2*NI*SW];
 
 	size += nb;
 	size *= 8;
@@ -175,7 +163,7 @@ static void last(const BYTE ba[NI*SW],size_t nb)
 
 static void pok(char fn[])
 {
-	print(accu.w,NO,fn);
+	print(accu,NO,fn);
 }
 
 int main(int ac,char *av[])
@@ -183,7 +171,7 @@ int main(int ac,char *av[])
 	int an;
 	FILE *ap;
 	size_t rv;
-	BYTE ar[sizeof(union ib)] = {0};
+	BYTE ar[NI*SW];
 
 	if (ac <= 1)
 		return fprintf(stderr,"usage: %s <filename> ...\n",av[0]),
