@@ -31,7 +31,7 @@ static WORD K[NS/20] = {
 0xCA62C1D6,
 };
  
-#define BA(w) ((BYTE*)&((w)[0]))
+#define BA(w) ((BYTE*)(w))
 
 static void print(const WORD wa[],int nw,const char sa[])
 {
@@ -153,7 +153,7 @@ static void last(const BYTE ba[NI*SW],size_t nb)
 #else
 	for (;;)
 #endif
-		temp[i++] = ((const BYTE *)&size)[j];
+		temp[i++] = BA(&size)[j];
 	if (i != NI*SW*l)
 		abort();
 	next(temp);
