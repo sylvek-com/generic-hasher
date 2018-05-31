@@ -107,9 +107,9 @@ static void next(const BYTE ba[NI*SW])
 	for (i = 0; i < NS; ++i) {
 #define A H.w[0]
 #define B H.w[1]
-#define C ROTR(H.w[2],2)
-#define D ROTR(H.w[3],2)
-#define E ROTR(H.w[4],2)
+#define C ((i>0)?ROTR(H.w[2],2):H.w[2])
+#define D ((i>1)?ROTR(H.w[3],2):H.w[3])
+#define E ((i>2)?ROTR(H.w[4],2):H.w[4])
 		j = i/20;
 		switch (j) {
 		case 0: t = (B & C) | (~B & D); break; // Cho(B,C,D)
