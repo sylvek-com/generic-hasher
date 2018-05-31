@@ -10,6 +10,7 @@
 #define NI 16
 #define NO 5
 #define NS 80
+#define SHA0 0
 
 union ib {
 	WORD w[NI];
@@ -95,10 +96,11 @@ static void next(const BYTE ba[NI*SW])
 	print(W.w,NI,"input");
 #endif
 	for (i = NI; i < NS; ++i)
-		W.w[i] = ROTL(
-			W.w[i-3] ^ W.w[i-8] ^ W.w[i-14] ^ W.w[i-16],
-			1
-		);
+#if SHA0
+		W.w[i] = W.w[i-3] ^ W.w[i-8] ^ W.w[i-14] ^ W.w[i-16];
+#else
+		W.w[i] = ROTL(W.w[i-3] ^ W.w[i-8] ^ W.w[i-14] ^ W.w[i-16],1);
+#endif
 	for (i = 0; i < NO; ++i)
 		H.w[i] = accu.w[i];
 	for (i = 0; i < NS; ++i) {
