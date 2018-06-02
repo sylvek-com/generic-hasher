@@ -1,2 +1,4 @@
+#vim temporaries
+.*.swp
 #executables
 ?asher

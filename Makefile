@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS=-Wall -g
 
-TGT=hasher basher washer masher
+TGT=hasher basher washer masher lasher
 
 all:	$(TGT)
 
