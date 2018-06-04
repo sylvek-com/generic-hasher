@@ -10,7 +10,6 @@
 #define NI 16
 #define NO 4
 #define NS 16
-#define SHA0 0
 
 static WORD accu[NO];
 
