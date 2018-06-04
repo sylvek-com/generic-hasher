@@ -2,13 +2,20 @@
 #include <stdlib.h>
 
 #define STEP 0
+#define RIPE 0
 #define BYTE unsigned char
 #define WORD unsigned int
 #define SIZE unsigned long long
 #define SW sizeof(WORD)
 #define SS sizeof(SIZE)
 #define NI 16
+#if RIPE==0 || RIPE==128
 #define NO 4
+#elif RIPE==160
+#define NO 5
+#else
+#error unimplemented RIPE variant
+#endif
 #define NS 16
 
 static WORD accu[NO];
@@ -16,10 +23,13 @@ static WORD accu[NO];
 static SIZE size;
 
 static WORD iv[NO] = {
-0x67452301,
-0xefcdab89,
-0x98badcfe,
-0x10325476,
+0x67452301u,
+0xefcdab89u,
+0x98badcfeu,
+0x10325476u,
+#if RIPE > 128
+0xc3d2e1f0u,
+#endif
 };
 
 #define BA(w) ((BYTE*)(w))
@@ -60,7 +70,6 @@ static void next(const BYTE ba[NI*SW])
 {
 	int i,j;
 	WORD W[NI];
-	WORD H[NO];
 
 	for (i = 0; i < NI; ++i)
 #if BYTE_ORDER == BIG_ENDIAN
@@ -74,151 +83,182 @@ static void next(const BYTE ba[NI*SW])
 #if STEP
 	print(W,NI,"input");
 #endif
-	for (i = 0; i < NO; ++i)
-		H[i] = accu[i];
-#define a H[0]
-#define b H[1]
-#define c H[2]
-#define d H[3]
-#define x W
-#if 0
-        /* Round 1. */
-        /* Let [abcd k s] denote the operation
-             a = (a + F(b,c,d) + X[k]) <<< s. */
-        /* Do the following 16 operations. */
-        [ABCD  0  3]  [DABC  1  7]  [CDAB  2 11]  [BCDA  3 19]
-        [ABCD  4  3]  [DABC  5  7]  [CDAB  6 11]  [BCDA  7 19]
-        [ABCD  8  3]  [DABC  9  7]  [CDAB 10 11]  [BCDA 11 19]
-        [ABCD 12  3]  [DABC 13  7]  [CDAB 14 11]  [BCDA 15 19]
-
-        /* Round 2. */
-        /* Let [abcd k s] denote the operation
-             a = (a + G(b,c,d) + X[k] + 5A827999) <<< s. */
-        /* Do the following 16 operations. */
-        [ABCD  0  3]  [DABC  4  5]  [CDAB  8  9]  [BCDA 12 13]
-        [ABCD  1  3]  [DABC  5  5]  [CDAB  9  9]  [BCDA 13 13]
-        [ABCD  2  3]  [DABC  6  5]  [CDAB 10  9]  [BCDA 14 13]
-        [ABCD  3  3]  [DABC  7  5]  [CDAB 11  9]  [BCDA 15 13]
-
-        /* Round 3. */
-        /* Let [abcd k s] denote the operation
-             a = (a + H(b,c,d) + X[k] + 6ED9EBA1) <<< s. */
-        /* Do the following 16 operations. */
-        [ABCD  0  3]  [DABC  8  9]  [CDAB  4 11]  [BCDA 12 15]
-        [ABCD  2  3]  [DABC 10  9]  [CDAB  6 11]  [BCDA 14 15]
-        [ABCD  1  3]  [DABC  9  9]  [CDAB  5 11]  [BCDA 13 15]
-        [ABCD  3  3]  [DABC 11  9]  [CDAB  7 11]  [BCDA 15 15]
-
-#else
+/*
+ * Round functions for RIPEMD (original).
+ */
+#define F(x, y, z)    ((((y) ^ (z)) & (x)) ^ (z))
+#define G(x, y, z)    (((x) & (y)) | (((x) | (y)) & (z)))
+#define H(x, y, z)    ((x) ^ (y) ^ (z))
 
 /*
- */ 
-#define S11 3
-#define S12 7
-#define S13 11
-#define S14 19
-#define S21 3
-#define S22 5
-#define S23 9
-#define S24 13
-#define S31 3
-#define S32 9
-#define S33 11
-#define S34 15
-
-/* F, G and H are basic MD4 functions.
+ * Round functions for RIPEMD-128 and RIPEMD-160.
  */
-#define F(x, y, z) (((x) & (y)) | ((~x) & (z)))
-#define G(x, y, z) (((x) & (y)) | ((x) & (z)) | ((y) & (z)))
-#define H(x, y, z) ((x) ^ (y) ^ (z))
+#define F1(x, y, z)   ((x) ^ (y) ^ (z))
+#define F2(x, y, z)   ((((y) ^ (z)) & (x)) ^ (z))
+#define F3(x, y, z)   (((x) | ~(y)) ^ (z))
+#define F4(x, y, z)   ((((x) ^ (y)) & (z)) ^ (y))
+#define F5(x, y, z)   ((x) ^ ((y) | ~(z)))
 
-/* ROTATE_LEFT rotates x left n bits.
+#if RIPE == 0
+/*
+ * RIPEMD (original hash, deprecated).
  */
-#define ROTATE_LEFT(x, n) (((x) << (n)) | ((x) >> (32-(n))))
 
-/* FF, GG and HH are transformations for rounds 1, 2 and 3 */
-/* Rotation is separate from addition to prevent recomputation */
+#define FF1(A, B, C, D, X, s)   do { \
+		WORD tmp = (A) + F(B, C, D) + (X); \
+		(A) = ROTL(tmp, (s)); \
+	} while (0)
 
-#define FF(a, b, c, d, x, s) { \
-    (a) += F ((b), (c), (d)) + (x); \
-    (a) = ROTATE_LEFT ((a), (s)); \
-  }
-#define GG(a, b, c, d, x, s) { \
-    (a) += G ((b), (c), (d)) + (x) + 0x5a827999u; \
-    (a) = ROTATE_LEFT ((a), (s)); \
-  }
-#define HH(a, b, c, d, x, s) { \
-    (a) += H ((b), (c), (d)) + (x) + 0x6ed9eba1u; \
-    (a) = ROTATE_LEFT ((a), (s)); \
-  }
+#define GG1(A, B, C, D, X, s)   do { \
+		WORD tmp = (A) + G(B, C, D) \
+			+ (X) + (WORD)0x5A827999; \
+		(A) = ROTL(tmp, (s)); \
+	} while (0)
 
-  /* Round 1 */
-  FF (a, b, c, d, x[ 0], S11); /* 1 */
-  FF (d, a, b, c, x[ 1], S12); /* 2 */
-  FF (c, d, a, b, x[ 2], S13); /* 3 */
-  FF (b, c, d, a, x[ 3], S14); /* 4 */
-  FF (a, b, c, d, x[ 4], S11); /* 5 */
-  FF (d, a, b, c, x[ 5], S12); /* 6 */
-  FF (c, d, a, b, x[ 6], S13); /* 7 */
-  FF (b, c, d, a, x[ 7], S14); /* 8 */
-  FF (a, b, c, d, x[ 8], S11); /* 9 */
-  FF (d, a, b, c, x[ 9], S12); /* 10 */
-  FF (c, d, a, b, x[10], S13); /* 11 */
-  FF (b, c, d, a, x[11], S14); /* 12 */
-  FF (a, b, c, d, x[12], S11); /* 13 */
-  FF (d, a, b, c, x[13], S12); /* 14 */
-  FF (c, d, a, b, x[14], S13); /* 15 */
-  FF (b, c, d, a, x[15], S14); /* 16 */
+#define HH1(A, B, C, D, X, s)   do { \
+		WORD tmp = (A) + H(B, C, D) \
+			+ (X) + (WORD)0x6ED9EBA1; \
+		(A) = ROTL(tmp, (s)); \
+	} while (0)
 
-  /* Round 2 */
-  GG (a, b, c, d, x[ 0], S21); /* 17 */
-  GG (d, a, b, c, x[ 4], S22); /* 18 */
-  GG (c, d, a, b, x[ 8], S23); /* 19 */
-  GG (b, c, d, a, x[12], S24); /* 20 */
-  GG (a, b, c, d, x[ 1], S21); /* 21 */
-  GG (d, a, b, c, x[ 5], S22); /* 22 */
-  GG (c, d, a, b, x[ 9], S23); /* 23 */
-  GG (b, c, d, a, x[13], S24); /* 24 */
-  GG (a, b, c, d, x[ 2], S21); /* 25 */
-  GG (d, a, b, c, x[ 6], S22); /* 26 */
-  GG (c, d, a, b, x[10], S23); /* 27 */
-  GG (b, c, d, a, x[14], S24); /* 28 */
-  GG (a, b, c, d, x[ 3], S21); /* 29 */
-  GG (d, a, b, c, x[ 7], S22); /* 30 */
-  GG (c, d, a, b, x[11], S23); /* 31 */
-  GG (b, c, d, a, x[15], S24); /* 32 */
+#define FF2(A, B, C, D, X, s)   do { \
+		WORD tmp = (A) + F(B, C, D) \
+			+ (X) + (WORD)(0x50A28BE6); \
+		(A) = ROTL(tmp, (s)); \
+	} while (0)
 
-  /* Round 3 */
-  HH (a, b, c, d, x[ 0], S31); /* 33 */
-  HH (d, a, b, c, x[ 8], S32); /* 34 */
-  HH (c, d, a, b, x[ 4], S33); /* 35 */
-  HH (b, c, d, a, x[12], S34); /* 36 */
-  HH (a, b, c, d, x[ 2], S31); /* 37 */
-  HH (d, a, b, c, x[10], S32); /* 38 */
-  HH (c, d, a, b, x[ 6], S33); /* 39 */
-  HH (b, c, d, a, x[14], S34); /* 40 */
-  HH (a, b, c, d, x[ 1], S31); /* 41 */
-  HH (d, a, b, c, x[ 9], S32); /* 42 */
-  HH (c, d, a, b, x[ 5], S33); /* 43 */
-  HH (b, c, d, a, x[13], S34); /* 44 */
-  HH (a, b, c, d, x[ 3], S31); /* 45 */
-  HH (d, a, b, c, x[11], S32); /* 46 */
-  HH (c, d, a, b, x[ 7], S33); /* 47 */
-  HH (b, c, d, a, x[15], S34); /* 48 */
+#define GG2(A, B, C, D, X, s)   do { \
+		WORD tmp = (A) + G(B, C, D) + (X); \
+		(A) = ROTL(tmp, (s)); \
+	} while (0)
 
+#define HH2(A, B, C, D, X, s)   do { \
+		WORD tmp = (A) + H(B, C, D) \
+			+ (X) + (WORD)(0x5C4DD124); \
+		(A) = ROTL(tmp, (s)); \
+	} while (0)
+
+	WORD A1, B1, C1, D1;
+	WORD A2, B2, C2, D2;
+	WORD tmp;
+
+	A1 = A2 = accu[0];
+	B1 = B2 = accu[1];
+	C1 = C2 = accu[2];
+	D1 = D2 = accu[3];
+
+	FF1(A1, B1, C1, D1, W[ 0], 11);
+	FF1(D1, A1, B1, C1, W[ 1], 14);
+	FF1(C1, D1, A1, B1, W[ 2], 15);
+	FF1(B1, C1, D1, A1, W[ 3], 12);
+	FF1(A1, B1, C1, D1, W[ 4],  5);
+	FF1(D1, A1, B1, C1, W[ 5],  8);
+	FF1(C1, D1, A1, B1, W[ 6],  7);
+	FF1(B1, C1, D1, A1, W[ 7],  9);
+	FF1(A1, B1, C1, D1, W[ 8], 11);
+	FF1(D1, A1, B1, C1, W[ 9], 13);
+	FF1(C1, D1, A1, B1, W[10], 14);
+	FF1(B1, C1, D1, A1, W[11], 15);
+	FF1(A1, B1, C1, D1, W[12],  6);
+	FF1(D1, A1, B1, C1, W[13],  7);
+	FF1(C1, D1, A1, B1, W[14],  9);
+	FF1(B1, C1, D1, A1, W[15],  8);
+
+	GG1(A1, B1, C1, D1, W[ 7],  7);
+	GG1(D1, A1, B1, C1, W[ 4],  6);
+	GG1(C1, D1, A1, B1, W[13],  8);
+	GG1(B1, C1, D1, A1, W[ 1], 13);
+	GG1(A1, B1, C1, D1, W[10], 11);
+	GG1(D1, A1, B1, C1, W[ 6],  9);
+	GG1(C1, D1, A1, B1, W[15],  7);
+	GG1(B1, C1, D1, A1, W[ 3], 15);
+	GG1(A1, B1, C1, D1, W[12],  7);
+	GG1(D1, A1, B1, C1, W[ 0], 12);
+	GG1(C1, D1, A1, B1, W[ 9], 15);
+	GG1(B1, C1, D1, A1, W[ 5],  9);
+	GG1(A1, B1, C1, D1, W[14],  7);
+	GG1(D1, A1, B1, C1, W[ 2], 11);
+	GG1(C1, D1, A1, B1, W[11], 13);
+	GG1(B1, C1, D1, A1, W[ 8], 12);
+
+	HH1(A1, B1, C1, D1, W[ 3], 11);
+	HH1(D1, A1, B1, C1, W[10], 13);
+	HH1(C1, D1, A1, B1, W[ 2], 14);
+	HH1(B1, C1, D1, A1, W[ 4],  7);
+	HH1(A1, B1, C1, D1, W[ 9], 14);
+	HH1(D1, A1, B1, C1, W[15],  9);
+	HH1(C1, D1, A1, B1, W[ 8], 13);
+	HH1(B1, C1, D1, A1, W[ 1], 15);
+	HH1(A1, B1, C1, D1, W[14],  6);
+	HH1(D1, A1, B1, C1, W[ 7],  8);
+	HH1(C1, D1, A1, B1, W[ 0], 13);
+	HH1(B1, C1, D1, A1, W[ 6],  6);
+	HH1(A1, B1, C1, D1, W[11], 12);
+	HH1(D1, A1, B1, C1, W[13],  5);
+	HH1(C1, D1, A1, B1, W[ 5],  7);
+	HH1(B1, C1, D1, A1, W[12],  5);
+
+	FF2(A2, B2, C2, D2, W[ 0], 11);
+	FF2(D2, A2, B2, C2, W[ 1], 14);
+	FF2(C2, D2, A2, B2, W[ 2], 15);
+	FF2(B2, C2, D2, A2, W[ 3], 12);
+	FF2(A2, B2, C2, D2, W[ 4],  5);
+	FF2(D2, A2, B2, C2, W[ 5],  8);
+	FF2(C2, D2, A2, B2, W[ 6],  7);
+	FF2(B2, C2, D2, A2, W[ 7],  9);
+	FF2(A2, B2, C2, D2, W[ 8], 11);
+	FF2(D2, A2, B2, C2, W[ 9], 13);
+	FF2(C2, D2, A2, B2, W[10], 14);
+	FF2(B2, C2, D2, A2, W[11], 15);
+	FF2(A2, B2, C2, D2, W[12],  6);
+	FF2(D2, A2, B2, C2, W[13],  7);
+	FF2(C2, D2, A2, B2, W[14],  9);
+	FF2(B2, C2, D2, A2, W[15],  8);
+
+	GG2(A2, B2, C2, D2, W[ 7],  7);
+	GG2(D2, A2, B2, C2, W[ 4],  6);
+	GG2(C2, D2, A2, B2, W[13],  8);
+	GG2(B2, C2, D2, A2, W[ 1], 13);
+	GG2(A2, B2, C2, D2, W[10], 11);
+	GG2(D2, A2, B2, C2, W[ 6],  9);
+	GG2(C2, D2, A2, B2, W[15],  7);
+	GG2(B2, C2, D2, A2, W[ 3], 15);
+	GG2(A2, B2, C2, D2, W[12],  7);
+	GG2(D2, A2, B2, C2, W[ 0], 12);
+	GG2(C2, D2, A2, B2, W[ 9], 15);
+	GG2(B2, C2, D2, A2, W[ 5],  9);
+	GG2(A2, B2, C2, D2, W[14],  7);
+	GG2(D2, A2, B2, C2, W[ 2], 11);
+	GG2(C2, D2, A2, B2, W[11], 13);
+	GG2(B2, C2, D2, A2, W[ 8], 12);
+
+	HH2(A2, B2, C2, D2, W[ 3], 11);
+	HH2(D2, A2, B2, C2, W[10], 13);
+	HH2(C2, D2, A2, B2, W[ 2], 14);
+	HH2(B2, C2, D2, A2, W[ 4],  7);
+	HH2(A2, B2, C2, D2, W[ 9], 14);
+	HH2(D2, A2, B2, C2, W[15],  9);
+	HH2(C2, D2, A2, B2, W[ 8], 13);
+	HH2(B2, C2, D2, A2, W[ 1], 15);
+	HH2(A2, B2, C2, D2, W[14],  6);
+	HH2(D2, A2, B2, C2, W[ 7],  8);
+	HH2(C2, D2, A2, B2, W[ 0], 13);
+	HH2(B2, C2, D2, A2, W[ 6],  6);
+	HH2(A2, B2, C2, D2, W[11], 12);
+	HH2(D2, A2, B2, C2, W[13],  5);
+	HH2(C2, D2, A2, B2, W[ 5],  7);
+	HH2(B2, C2, D2, A2, W[12],  5);
+
+	tmp = accu[1] + C1 + D2;
+	accu[1] = accu[2] + D1 + A2;
+	accu[2] = accu[3] + A1 + B2;
+	accu[3] = accu[0] + B1 + C2;
+	accu[0] = tmp;
+	
+#elif RIPE == 128
+#elif RIPE == 160
 #endif
 
-#undef a
-#undef b
-#undef c
-#undef d
-#undef x
-
-#if STEP
-		print(H,NO,"round");
-#endif
-	for (i = 0; i < NO; ++i)
-		accu[i] += H[i];
 	size += NI*SW;
 }
 
