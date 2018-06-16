@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #define STEP 0
-#define RIPE 0
+#define RIPE 128
 #define BYTE unsigned char
 #define WORD unsigned int
 #define SIZE unsigned long long
@@ -97,7 +97,30 @@ static void next(const BYTE ba[NI*SW])
 #define F2(x, y, z)   ((((y) ^ (z)) & (x)) ^ (z))
 #define F3(x, y, z)   (((x) | ~(y)) ^ (z))
 #define F4(x, y, z)   ((((x) ^ (y)) & (z)) ^ (y))
+#if RIPE == 160
 #define F5(x, y, z)   ((x) ^ ((y) | ~(z)))
+#endif
+
+/*
+ * Round constants for RIPEMD-128 and RIPEMD-160.
+ */
+#define K11    (WORD)0x00000000
+#define K12    (WORD)0x5A827999
+#define K13    (WORD)0x6ED9EBA1
+#define K14    (WORD)0x8F1BBCDC
+#if RIPE > 128
+#define K15    (WORD)0xA953FD4E
+#endif
+
+#define K21    (WORD)0x50A28BE6
+#define K22    (WORD)0x5C4DD124
+#define K23    (WORD)0x6D703EF3
+#if RIPE == 128
+#define K24    (WORD)0x00000000
+#else
+#define K24    (WORD)0x7A6D76E9
+#define K25    (WORD)0x00000000
+#endif
 
 #if RIPE == 0
 /*
@@ -256,7 +279,174 @@ static void next(const BYTE ba[NI*SW])
 	accu[0] = tmp;
 	
 #elif RIPE == 128
+/*
+ * RIPEMD-128
+ */
+
+#define RR(a, b, c, d, f, s, r, k)   do { \
+		a = ROTL((WORD)(a + f(b, c, d) + r + k), s); \
+	} while (0)
+
+#define ROUND1(a, b, c, d, f, s, r, k)  \
+	RR(a ## 1, b ## 1, c ## 1, d ## 1, f, s, r, K1 ## k)
+
+#define ROUND2(a, b, c, d, f, s, r, k)  \
+	RR(a ## 2, b ## 2, c ## 2, d ## 2, f, s, r, K2 ## k)
+
+	WORD A1, B1, C1, D1;
+	WORD A2, B2, C2, D2;
+	WORD tmp;
+
+	A1 = A2 = accu[0];
+	B1 = B2 = accu[1];
+	C1 = C2 = accu[2];
+	D1 = D2 = accu[3];
+
+	ROUND1(A, B, C, D, F1, 11, W[ 0],  1);
+	ROUND1(D, A, B, C, F1, 14, W[ 1],  1);
+	ROUND1(C, D, A, B, F1, 15, W[ 2],  1);
+	ROUND1(B, C, D, A, F1, 12, W[ 3],  1);
+	ROUND1(A, B, C, D, F1,  5, W[ 4],  1);
+	ROUND1(D, A, B, C, F1,  8, W[ 5],  1);
+	ROUND1(C, D, A, B, F1,  7, W[ 6],  1);
+	ROUND1(B, C, D, A, F1,  9, W[ 7],  1);
+	ROUND1(A, B, C, D, F1, 11, W[ 8],  1);
+	ROUND1(D, A, B, C, F1, 13, W[ 9],  1);
+	ROUND1(C, D, A, B, F1, 14, W[10],  1);
+	ROUND1(B, C, D, A, F1, 15, W[11],  1);
+	ROUND1(A, B, C, D, F1,  6, W[12],  1);
+	ROUND1(D, A, B, C, F1,  7, W[13],  1);
+	ROUND1(C, D, A, B, F1,  9, W[14],  1);
+	ROUND1(B, C, D, A, F1,  8, W[15],  1);
+
+	ROUND1(A, B, C, D, F2,  7, W[ 7],  2);
+	ROUND1(D, A, B, C, F2,  6, W[ 4],  2);
+	ROUND1(C, D, A, B, F2,  8, W[13],  2);
+	ROUND1(B, C, D, A, F2, 13, W[ 1],  2);
+	ROUND1(A, B, C, D, F2, 11, W[10],  2);
+	ROUND1(D, A, B, C, F2,  9, W[ 6],  2);
+	ROUND1(C, D, A, B, F2,  7, W[15],  2);
+	ROUND1(B, C, D, A, F2, 15, W[ 3],  2);
+	ROUND1(A, B, C, D, F2,  7, W[12],  2);
+	ROUND1(D, A, B, C, F2, 12, W[ 0],  2);
+	ROUND1(C, D, A, B, F2, 15, W[ 9],  2);
+	ROUND1(B, C, D, A, F2,  9, W[ 5],  2);
+	ROUND1(A, B, C, D, F2, 11, W[ 2],  2);
+	ROUND1(D, A, B, C, F2,  7, W[14],  2);
+	ROUND1(C, D, A, B, F2, 13, W[11],  2);
+	ROUND1(B, C, D, A, F2, 12, W[ 8],  2);
+
+	ROUND1(A, B, C, D, F3, 11, W[ 3],  3);
+	ROUND1(D, A, B, C, F3, 13, W[10],  3);
+	ROUND1(C, D, A, B, F3,  6, W[14],  3);
+	ROUND1(B, C, D, A, F3,  7, W[ 4],  3);
+	ROUND1(A, B, C, D, F3, 14, W[ 9],  3);
+	ROUND1(D, A, B, C, F3,  9, W[15],  3);
+	ROUND1(C, D, A, B, F3, 13, W[ 8],  3);
+	ROUND1(B, C, D, A, F3, 15, W[ 1],  3);
+	ROUND1(A, B, C, D, F3, 14, W[ 2],  3);
+	ROUND1(D, A, B, C, F3,  8, W[ 7],  3);
+	ROUND1(C, D, A, B, F3, 13, W[ 0],  3);
+	ROUND1(B, C, D, A, F3,  6, W[ 6],  3);
+	ROUND1(A, B, C, D, F3,  5, W[13],  3);
+	ROUND1(D, A, B, C, F3, 12, W[11],  3);
+	ROUND1(C, D, A, B, F3,  7, W[ 5],  3);
+	ROUND1(B, C, D, A, F3,  5, W[12],  3);
+
+	ROUND1(A, B, C, D, F4, 11, W[ 1],  4);
+	ROUND1(D, A, B, C, F4, 12, W[ 9],  4);
+	ROUND1(C, D, A, B, F4, 14, W[11],  4);
+	ROUND1(B, C, D, A, F4, 15, W[10],  4);
+	ROUND1(A, B, C, D, F4, 14, W[ 0],  4);
+	ROUND1(D, A, B, C, F4, 15, W[ 8],  4);
+	ROUND1(C, D, A, B, F4,  9, W[12],  4);
+	ROUND1(B, C, D, A, F4,  8, W[ 4],  4);
+	ROUND1(A, B, C, D, F4,  9, W[13],  4);
+	ROUND1(D, A, B, C, F4, 14, W[ 3],  4);
+	ROUND1(C, D, A, B, F4,  5, W[ 7],  4);
+	ROUND1(B, C, D, A, F4,  6, W[15],  4);
+	ROUND1(A, B, C, D, F4,  8, W[14],  4);
+	ROUND1(D, A, B, C, F4,  6, W[ 5],  4);
+	ROUND1(C, D, A, B, F4,  5, W[ 6],  4);
+	ROUND1(B, C, D, A, F4, 12, W[ 2],  4);
+
+	ROUND2(A, B, C, D, F4,  8, W[ 5],  1);
+	ROUND2(D, A, B, C, F4,  9, W[14],  1);
+	ROUND2(C, D, A, B, F4,  9, W[ 7],  1);
+	ROUND2(B, C, D, A, F4, 11, W[ 0],  1);
+	ROUND2(A, B, C, D, F4, 13, W[ 9],  1);
+	ROUND2(D, A, B, C, F4, 15, W[ 2],  1);
+	ROUND2(C, D, A, B, F4, 15, W[11],  1);
+	ROUND2(B, C, D, A, F4,  5, W[ 4],  1);
+	ROUND2(A, B, C, D, F4,  7, W[13],  1);
+	ROUND2(D, A, B, C, F4,  7, W[ 6],  1);
+	ROUND2(C, D, A, B, F4,  8, W[15],  1);
+	ROUND2(B, C, D, A, F4, 11, W[ 8],  1);
+	ROUND2(A, B, C, D, F4, 14, W[ 1],  1);
+	ROUND2(D, A, B, C, F4, 14, W[10],  1);
+	ROUND2(C, D, A, B, F4, 12, W[ 3],  1);
+	ROUND2(B, C, D, A, F4,  6, W[12],  1);
+
+	ROUND2(A, B, C, D, F3,  9, W[ 6],  2);
+	ROUND2(D, A, B, C, F3, 13, W[11],  2);
+	ROUND2(C, D, A, B, F3, 15, W[ 3],  2);
+	ROUND2(B, C, D, A, F3,  7, W[ 7],  2);
+	ROUND2(A, B, C, D, F3, 12, W[ 0],  2);
+	ROUND2(D, A, B, C, F3,  8, W[13],  2);
+	ROUND2(C, D, A, B, F3,  9, W[ 5],  2);
+	ROUND2(B, C, D, A, F3, 11, W[10],  2);
+	ROUND2(A, B, C, D, F3,  7, W[14],  2);
+	ROUND2(D, A, B, C, F3,  7, W[15],  2);
+	ROUND2(C, D, A, B, F3, 12, W[ 8],  2);
+	ROUND2(B, C, D, A, F3,  7, W[12],  2);
+	ROUND2(A, B, C, D, F3,  6, W[ 4],  2);
+	ROUND2(D, A, B, C, F3, 15, W[ 9],  2);
+	ROUND2(C, D, A, B, F3, 13, W[ 1],  2);
+	ROUND2(B, C, D, A, F3, 11, W[ 2],  2);
+
+	ROUND2(A, B, C, D, F2,  9, W[15],  3);
+	ROUND2(D, A, B, C, F2,  7, W[ 5],  3);
+	ROUND2(C, D, A, B, F2, 15, W[ 1],  3);
+	ROUND2(B, C, D, A, F2, 11, W[ 3],  3);
+	ROUND2(A, B, C, D, F2,  8, W[ 7],  3);
+	ROUND2(D, A, B, C, F2,  6, W[14],  3);
+	ROUND2(C, D, A, B, F2,  6, W[ 6],  3);
+	ROUND2(B, C, D, A, F2, 14, W[ 9],  3);
+	ROUND2(A, B, C, D, F2, 12, W[11],  3);
+	ROUND2(D, A, B, C, F2, 13, W[ 8],  3);
+	ROUND2(C, D, A, B, F2,  5, W[12],  3);
+	ROUND2(B, C, D, A, F2, 14, W[ 2],  3);
+	ROUND2(A, B, C, D, F2, 13, W[10],  3);
+	ROUND2(D, A, B, C, F2, 13, W[ 0],  3);
+	ROUND2(C, D, A, B, F2,  7, W[ 4],  3);
+	ROUND2(B, C, D, A, F2,  5, W[13],  3);
+
+	ROUND2(A, B, C, D, F1, 15, W[ 8],  4);
+	ROUND2(D, A, B, C, F1,  5, W[ 6],  4);
+	ROUND2(C, D, A, B, F1,  8, W[ 4],  4);
+	ROUND2(B, C, D, A, F1, 11, W[ 1],  4);
+	ROUND2(A, B, C, D, F1, 14, W[ 3],  4);
+	ROUND2(D, A, B, C, F1, 14, W[11],  4);
+	ROUND2(C, D, A, B, F1,  6, W[15],  4);
+	ROUND2(B, C, D, A, F1, 14, W[ 0],  4);
+	ROUND2(A, B, C, D, F1,  6, W[ 5],  4);
+	ROUND2(D, A, B, C, F1,  9, W[12],  4);
+	ROUND2(C, D, A, B, F1, 12, W[ 2],  4);
+	ROUND2(B, C, D, A, F1,  9, W[13],  4);
+	ROUND2(A, B, C, D, F1, 12, W[ 9],  4);
+	ROUND2(D, A, B, C, F1,  5, W[ 7],  4);
+	ROUND2(C, D, A, B, F1, 15, W[10],  4);
+	ROUND2(B, C, D, A, F1,  8, W[14],  4);
+
+	tmp = accu[1] + C1 + D2;
+	accu[1] = accu[2] + D1 + A2;
+	accu[2] = accu[3] + A1 + B2;
+	accu[3] = accu[0] + B1 + C2;
+	accu[0] = tmp;
 #elif RIPE == 160
+/*
+ * RIPEMD-160
+ */
 #endif
 
 	size += NI*SW;
