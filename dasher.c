@@ -293,7 +293,9 @@ static void next(const BYTE ba[NI*SW])
 #else /* __MMX__ */
 
 #if 1
-	register __v2si A,B,C,D;
+	#define asm(m)
+	register __v2si A asm("mm0"),B asm("mm1"),C asm("mm2"),D asm("mm3");
+	#undef asm
 	register WORD tmp;
 
 //efine ROTL(w,s) ((w) << (s) | (w) >> (32-s))
@@ -313,6 +315,10 @@ static void next(const BYTE ba[NI*SW])
 		 _m_paddd(_mm_set1_pi32(X),_mm_set_pi32(K##U[1],K##U[0]))), \
 		s)
 
+	A = _mm_set1_pi32(accu[0]);
+	B = _mm_set1_pi32(accu[1]);
+	C = _mm_set1_pi32(accu[2]);
+	D = _mm_set1_pi32(accu[3]);
 #else
 	typedef WORD WTWO[2];
 	WTWO A,B,C,D;
@@ -320,12 +326,12 @@ static void next(const BYTE ba[NI*SW])
 
 #define V(U, A, B, C, D, X, s)  for (i = 0; i < 2; ++i) \
 		A[i] = ROTL((WORD)(A[i] + U(B[i], C[i], D[i]) + X + K##U[i]), s)
-#endif
 
 	A[0] = A[1] = accu[0];
 	B[0] = B[1] = accu[1];
 	C[0] = C[1] = accu[2];
 	D[0] = D[1] = accu[3];
+#endif
 
 	V(F, A, B, C, D, W[ 0], 11);
 	V(F, D, A, B, C, W[ 1], 14);
