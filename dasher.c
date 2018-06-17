@@ -35,6 +35,7 @@
 #error unimplemented RIPE variant
 #endif
 #define NS 16
+#define NB NI*SW
 
 static WORD accu[NO];
 
@@ -84,7 +85,7 @@ static void init(void)
 #define ROTL(w,s) ((w) << (s) | (w) >> (32-s))
 #define ROTR(w,s) ((w) >> (s) | (w) << (32-s))
 
-static void next(const BYTE ba[NI*SW])
+static void next(const BYTE ba[NB])
 {
 	int i,j;
 	WORD W[NI];
@@ -788,13 +789,13 @@ static void next(const BYTE ba[NI*SW])
 
 #endif
 
-	size += NI*SW;
+	size += NB;
 }
 
-static void last(const BYTE ba[NI*SW],int nb)
+static void last(const BYTE ba[NB],int nb)
 {
 	int i,j,k,l;
-	BYTE temp[2*NI*SW];
+	BYTE temp[2*NB];
 
 	size += nb;
 	size *= 8;
@@ -803,8 +804,8 @@ static void last(const BYTE ba[NI*SW],int nb)
 	while (i < nb)
 		temp[i++] = *ba++;
 	temp[i++] = 0x80u;
-	l = 1 + ((i + SS) > NI*SW);
-	k = l*NI*SW - SS;
+	l = 1 + ((i + SS) > NB);
+	k = l*NB - SS;
 	while (i < k)
 		temp[i++] = 0u;
 #if BYTE_ORDER == BIG_ENDIAN
@@ -815,11 +816,11 @@ static void last(const BYTE ba[NI*SW],int nb)
 	for (;;)
 #endif
 		temp[i++] = BA(&size)[j];
-	if (i != NI*SW*l)
+	if (i != NB*l)
 		abort();
 	next(temp);
 	if (l > 1)
-		next(temp+NI*SW);
+		next(temp+NB);
 }
 
 static void pok(char fn[])
@@ -830,7 +831,7 @@ static void pok(char fn[])
 int main(int ac,char *av[])
 {
 	int an;
-	BYTE ar[NI*SW];
+	BYTE ar[NB];
 
 #if !ZERO
 	FILE *ap;
@@ -847,7 +848,7 @@ int main(int ac,char *av[])
 		}
 		
 		init();
-		while ((rv = fread(ar,1,sizeof ar,ap)) == sizeof ar)
+		while ((rv = fread(ar,1,NB,ap)) == NB)
 			next(ar);
 		last(ar,rv);
 
@@ -860,22 +861,28 @@ int main(int ac,char *av[])
 	}
 #else
 	long al;
+	char *ae;
 
 	if (ac <= 1)
 		return fprintf(stderr,"usage: %s <length> ...\n",av[0]),
 			EXIT_FAILURE;
-	for (an = 0; an < sizeof ar; ++ an)
+	for (an = 0; an < NB; ++an)
 		ar[an] = 0;
 	for (an = 1; an < ac; ++an) {
-		al = atol(av[an]);
-		if (al < 0) {
-			fprintf(stderr,"%s: negative\n"r,av[an]);
+		#include <errno.h>
+
+		errno = 0;
+		al = strtol(av[an],&ae,10);
+		if (errno || al < 0 || *ae || ae == av[an]) {
+			if (!errno)
+				errno = EINVAL;
+			perror(av[an]);
 			continue;
 		}
 
 		init();
-		while (al >= sizeof ar) {
-			al -= sizeof ar;
+		while (al >= NB) {
+			al -= NB;
 			next(ar);
 		}
 		last(ar,al);
