@@ -5,8 +5,8 @@
 #define BYTE unsigned char
 #define WORD unsigned int
 #define SIZE unsigned long long
-#define SW sizeof(WORD)
-#define SS sizeof(SIZE)
+#define SW (int)sizeof(WORD)
+#define SS (int)sizeof(SIZE)
 #define NI 16
 #define NO 4
 #define NS 16
@@ -222,7 +222,7 @@ static void next(const BYTE ba[NI*SW])
 	size += NI*SW;
 }
 
-static void last(const BYTE ba[NI*SW],size_t nb)
+static void last(const BYTE ba[NI*SW],int nb)
 {
 	int i,j,k,l;
 	BYTE temp[2*NI*SW];
@@ -253,7 +253,7 @@ static void last(const BYTE ba[NI*SW],size_t nb)
 		next(temp+NI*SW);
 }
 
-static void pok(char fn[])
+static void pok(const char fn[])
 {
 	print(accu,NO,fn);
 }
