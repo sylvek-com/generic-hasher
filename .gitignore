@@ -2,3 +2,12 @@
 .*.swp
 #executables
 ?asher
+?asher-*
+a.out
+#assembly sources
+*.s
+*.asm
+*.cod
+#object files
+*.o
+*.obj
