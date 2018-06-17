@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #define STEP 0
-#define RIPE 160
+#define RIPE 0
 #define BYTE unsigned char
 #define WORD unsigned int
 #define SIZE unsigned long long
@@ -102,6 +102,17 @@ static void next(const BYTE ba[NI*SW])
 #endif
 
 /*
+ * Round constants for RIPEMD (original).
+ */
+#define KF1    (WORD)0x00000000
+#define KG1    (WORD)0x5A827999
+#define KH1    (WORD)0x6ED9EBA1
+
+#define KF2    (WORD)0x50A28BE6
+#define KG2    (WORD)0x00000000
+#define KH2    (WORD)0x5C4DD124
+
+/*
  * Round constants for RIPEMD-128 and RIPEMD-160.
  */
 #define K11    (WORD)0x00000000
@@ -128,37 +139,27 @@ static void next(const BYTE ba[NI*SW])
  */
 
 #define FF1(A, B, C, D, X, s)   do { \
-		WORD tmp = (A) + F(B, C, D) + (X); \
-		(A) = ROTL(tmp, (s)); \
+		A = ROTL((WORD)(A + F(B, C, D) + X + KF1), s); \
 	} while (0)
 
 #define GG1(A, B, C, D, X, s)   do { \
-		WORD tmp = (A) + G(B, C, D) \
-			+ (X) + (WORD)0x5A827999; \
-		(A) = ROTL(tmp, (s)); \
+		A = ROTL((WORD)(A + G(B, C, D) + X + KG1), s); \
 	} while (0)
 
 #define HH1(A, B, C, D, X, s)   do { \
-		WORD tmp = (A) + H(B, C, D) \
-			+ (X) + (WORD)0x6ED9EBA1; \
-		(A) = ROTL(tmp, (s)); \
+		A = ROTL((WORD)(A + H(B, C, D) + X + KH1), s); \
 	} while (0)
 
 #define FF2(A, B, C, D, X, s)   do { \
-		WORD tmp = (A) + F(B, C, D) \
-			+ (X) + (WORD)(0x50A28BE6); \
-		(A) = ROTL(tmp, (s)); \
+		A = ROTL((WORD)(A + F(B, C, D) + X + KF2), s); \
 	} while (0)
 
 #define GG2(A, B, C, D, X, s)   do { \
-		WORD tmp = (A) + G(B, C, D) + (X); \
-		(A) = ROTL(tmp, (s)); \
+		A = ROTL((WORD)(A + G(B, C, D) + X + KG2), s); \
 	} while (0)
 
 #define HH2(A, B, C, D, X, s)   do { \
-		WORD tmp = (A) + H(B, C, D) \
-			+ (X) + (WORD)(0x5C4DD124); \
-		(A) = ROTL(tmp, (s)); \
+		A = ROTL((WORD)(A + H(B, C, D) + X + KH2), s); \
 	} while (0)
 
 	WORD A1, B1, C1, D1;
