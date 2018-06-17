@@ -293,10 +293,12 @@ static void next(const BYTE ba[NI*SW])
 #else /* __MMX__ */
 
 #if 1
-	#define asm(m)
-	register __v2si A asm("mm0"),B asm("mm1"),C asm("mm2"),D asm("mm3");
+	#define asm(m) /* explicitly fixing registers doesn't change generated code much */
+	#define register
+	register __v2si A asm("mm4"),B asm("mm5"),C asm("mm6"),D asm("mm7");
 	#undef asm
-	register WORD tmp;
+	#undef register
+	WORD tmp;
 
 //efine ROTL(w,s) ((w) << (s) | (w) >> (32-s))
 #undef ROTL
@@ -320,8 +322,14 @@ static void next(const BYTE ba[NI*SW])
 	C = _mm_set1_pi32(accu[2]);
 	D = _mm_set1_pi32(accu[3]);
 #else
+
+#if 1
 	typedef WORD WTWO[2];
 	WTWO A,B,C,D;
+#else
+	typedef __v2si WTWO; /* explicitly fixing register causes internal compiler error */
+	register WTWO A asm("mm4"),B asm("mm5"),C asm("mm6"),D asm("mm7");
+#endif
 	WORD tmp;
 
 #define V(U, A, B, C, D, X, s)  for (i = 0; i < 2; ++i) \
