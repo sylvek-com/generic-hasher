@@ -4,6 +4,11 @@
 #ifdef __MMX__
 #include <mmintrin.h>
 #endif
+
+#ifndef VECT /* vectorisation */
+#define VECT 1
+#endif
+
 #define STEP 0
 #define RIPE 0
 #define BYTE unsigned char
@@ -116,7 +121,7 @@ static void next(const BYTE ba[NI*SW])
 #define KG2    (WORD)0x00000000
 #define KH2    (WORD)0x5C4DD124
 
-#ifdef __MMX__
+#if RIPE == 0 && VECT
 	static WORD KF[2] = { KF1, KF2 };
 	static WORD KG[2] = { KG1, KG2 };
 	static WORD KH[2] = { KH1, KH2 };
@@ -147,7 +152,7 @@ static void next(const BYTE ba[NI*SW])
  * RIPEMD (original hash, deprecated).
  */
 
-#ifndef __MMX__
+#if !VECT /* non-vectorised */
 
 #define FF1(A, B, C, D, X, s)   do { \
 		A = ROTL((WORD)(A + F(B, C, D) + X + KF1), s); \
@@ -290,14 +295,16 @@ static void next(const BYTE ba[NI*SW])
 	accu[3] = accu[0] + B1 + C2;
 	accu[0] = tmp;
 	
-#else /* __MMX__ */
+#else /* vectorised */
 
-#if 1
-	#define asm(m) /* explicitly fixing registers doesn't change generated code much */
-	#define register
+#if __MMX__ /* MMX vectors */
+
+#if 0
+	/* explicitly fixing registers doesn't change generated code much */
 	register __v2si A asm("mm4"),B asm("mm5"),C asm("mm6"),D asm("mm7");
-	#undef asm
-	#undef register
+#else
+	__v2si A,B,C,D;
+#endif
 	WORD tmp;
 
 //efine ROTL(w,s) ((w) << (s) | (w) >> (32-s))
@@ -321,14 +328,15 @@ static void next(const BYTE ba[NI*SW])
 	B = _mm_set1_pi32(accu[1]);
 	C = _mm_set1_pi32(accu[2]);
 	D = _mm_set1_pi32(accu[3]);
-#else
 
-#if 1
-	typedef WORD WTWO[2];
-	WTWO A,B,C,D;
-#else
+#else /* plain vectors */
+
+#if 0
 	typedef __v2si WTWO; /* explicitly fixing register causes internal compiler error */
 	register WTWO A asm("mm4"),B asm("mm5"),C asm("mm6"),D asm("mm7");
+#else
+	typedef WORD WTWO[2];
+	WTWO A,B,C,D;
 #endif
 	WORD tmp;
 
