@@ -6,11 +6,21 @@
 #endif
 
 #ifndef VECT /* vectorisation */
-#define VECT 1
+#define VECT 0
 #endif
 
+#ifndef STEP /* step-by-step */
 #define STEP 0
+#endif
+
+#ifndef RIPE /* variant */
 #define RIPE 0
+#endif
+
+#ifndef ZERO /* benchmark */
+#define ZERO 0
+#endif
+
 #define BYTE unsigned char
 #define WORD unsigned int
 #define SIZE unsigned long long
@@ -820,9 +830,11 @@ static void pok(char fn[])
 int main(int ac,char *av[])
 {
 	int an;
+	BYTE ar[NI*SW];
+
+#if !ZERO
 	FILE *ap;
 	size_t rv;
-	BYTE ar[NI*SW];
 
 	if (ac <= 1)
 		return fprintf(stderr,"usage: %s <filename> ...\n",av[0]),
@@ -846,5 +858,30 @@ int main(int ac,char *av[])
 		if (fclose(ap))
 			perror("close()");
 	}
+#else
+	long al;
+
+	if (ac <= 1)
+		return fprintf(stderr,"usage: %s <length> ...\n",av[0]),
+			EXIT_FAILURE;
+	for (an = 0; an < sizeof ar; ++ an)
+		ar[an] = 0;
+	for (an = 1; an < ac; ++an) {
+		al = atol(av[an]);
+		if (al < 0) {
+			fprintf(stderr,"%s: negative\n"r,av[an]);
+			continue;
+		}
+
+		init();
+		while (al >= sizeof ar) {
+			al -= sizeof ar;
+			next(ar);
+		}
+		last(ar,al);
+
+		pok(av[an]);
+	}
+#endif
 	return EXIT_SUCCESS;
 }
