@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef __MMX__
+#include <mmintrin.h>
+#endif
 #define STEP 0
 #define RIPE 0
 #define BYTE unsigned char
@@ -83,6 +86,7 @@ static void next(const BYTE ba[NI*SW])
 #if STEP
 	print(W,NI,"input");
 #endif
+
 /*
  * Round functions for RIPEMD (original).
  */
@@ -112,6 +116,11 @@ static void next(const BYTE ba[NI*SW])
 #define KG2    (WORD)0x00000000
 #define KH2    (WORD)0x5C4DD124
 
+#ifdef __MMX__
+	static WORD KF[2] = { KF1, KF2 };
+	static WORD KG[2] = { KG1, KG2 };
+	static WORD KH[2] = { KH1, KH2 };
+#endif
 /*
  * Round constants for RIPEMD-128 and RIPEMD-160.
  */
@@ -137,6 +146,8 @@ static void next(const BYTE ba[NI*SW])
 /*
  * RIPEMD (original hash, deprecated).
  */
+
+#ifndef __MMX__
 
 #define FF1(A, B, C, D, X, s)   do { \
 		A = ROTL((WORD)(A + F(B, C, D) + X + KF1), s); \
@@ -279,6 +290,101 @@ static void next(const BYTE ba[NI*SW])
 	accu[3] = accu[0] + B1 + C2;
 	accu[0] = tmp;
 	
+#else /* __MMX__ */
+
+#if 1
+	register __v2si A,B,C,D;
+	register WORD tmp;
+
+//efine ROTL(w,s) ((w) << (s) | (w) >> (32-s))
+#undef ROTL
+#define ROTL(x,s) _m_por(_m_pslldi(x,s),_m_psrldi(x,32-s))
+#undef F
+//efine f(x, y, z)    ((((y) ^ (z)) & (x)) ^ (z))
+#define F(x, y, z)    _m_pxor(_m_pand(_m_pxor(y,z),x),z)
+#undef G
+//efine g(x, y, z)    (((x) & (y)) | (((x) | (y)) & (z)))
+#define G(x, y, z)    _m_por(_m_pand(x,y),_m_pand(_m_por(x,y),z))
+#undef H
+//efine h(x, y, z)    ((x) ^ (y) ^ (z))
+#define H(x, y, z)    _m_pxor(x,_m_pxor(y,z))
+#define V(U, A, B, C, D, X, s) \
+	A = ROTL(_m_paddd(_m_paddd(A,U(B, C, D)), \
+		 _m_paddd(_mm_set1_pi32(X),_mm_set_pi32(K##U[1],K##U[0]))), \
+		s)
+
+#else
+	typedef WORD WTWO[2];
+	WTWO A,B,C,D;
+	WORD tmp;
+
+#define V(U, A, B, C, D, X, s)  for (i = 0; i < 2; ++i) \
+		A[i] = ROTL((WORD)(A[i] + U(B[i], C[i], D[i]) + X + K##U[i]), s)
+#endif
+
+	A[0] = A[1] = accu[0];
+	B[0] = B[1] = accu[1];
+	C[0] = C[1] = accu[2];
+	D[0] = D[1] = accu[3];
+
+	V(F, A, B, C, D, W[ 0], 11);
+	V(F, D, A, B, C, W[ 1], 14);
+	V(F, C, D, A, B, W[ 2], 15);
+	V(F, B, C, D, A, W[ 3], 12);
+	V(F, A, B, C, D, W[ 4],  5);
+	V(F, D, A, B, C, W[ 5],  8);
+	V(F, C, D, A, B, W[ 6],  7);
+	V(F, B, C, D, A, W[ 7],  9);
+	V(F, A, B, C, D, W[ 8], 11);
+	V(F, D, A, B, C, W[ 9], 13);
+	V(F, C, D, A, B, W[10], 14);
+	V(F, B, C, D, A, W[11], 15);
+	V(F, A, B, C, D, W[12],  6);
+	V(F, D, A, B, C, W[13],  7);
+	V(F, C, D, A, B, W[14],  9);
+	V(F, B, C, D, A, W[15],  8);
+
+	V(G, A, B, C, D, W[ 7],  7);
+	V(G, D, A, B, C, W[ 4],  6);
+	V(G, C, D, A, B, W[13],  8);
+	V(G, B, C, D, A, W[ 1], 13);
+	V(G, A, B, C, D, W[10], 11);
+	V(G, D, A, B, C, W[ 6],  9);
+	V(G, C, D, A, B, W[15],  7);
+	V(G, B, C, D, A, W[ 3], 15);
+	V(G, A, B, C, D, W[12],  7);
+	V(G, D, A, B, C, W[ 0], 12);
+	V(G, C, D, A, B, W[ 9], 15);
+	V(G, B, C, D, A, W[ 5],  9);
+	V(G, A, B, C, D, W[14],  7);
+	V(G, D, A, B, C, W[ 2], 11);
+	V(G, C, D, A, B, W[11], 13);
+	V(G, B, C, D, A, W[ 8], 12);
+
+	V(H, A, B, C, D, W[ 3], 11);
+	V(H, D, A, B, C, W[10], 13);
+	V(H, C, D, A, B, W[ 2], 14);
+	V(H, B, C, D, A, W[ 4],  7);
+	V(H, A, B, C, D, W[ 9], 14);
+	V(H, D, A, B, C, W[15],  9);
+	V(H, C, D, A, B, W[ 8], 13);
+	V(H, B, C, D, A, W[ 1], 15);
+	V(H, A, B, C, D, W[14],  6);
+	V(H, D, A, B, C, W[ 7],  8);
+	V(H, C, D, A, B, W[ 0], 13);
+	V(H, B, C, D, A, W[ 6],  6);
+	V(H, A, B, C, D, W[11], 12);
+	V(H, D, A, B, C, W[13],  5);
+	V(H, C, D, A, B, W[ 5],  7);
+	V(H, B, C, D, A, W[12],  5);
+
+	tmp = accu[1] + C[0] + D[1];
+	accu[1] = accu[2] + D[0] + A[1];
+	accu[2] = accu[3] + A[0] + B[1];
+	accu[3] = accu[0] + B[0] + C[1];
+	accu[0] = tmp;
+#endif
+
 #elif RIPE == 128
 /*
  * RIPEMD-128
