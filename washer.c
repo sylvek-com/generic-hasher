@@ -1,7 +1,33 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef __MMX__
+#include <emmintrin.h>
+/* fix for errors & omissions in mmintrin.h */
+#ifndef __x86_64__
+/* Intel intrinsic.  */
+extern __inline __m64  __attribute__((__gnu_inline__, __always_inline__, __artificial__))
+_m_from_int64 (long long __i)
+{
+  return (__m64) __i;
+}
+/* Intel intrinsic.  */
+extern __inline long long __attribute__((__gnu_inline__, __always_inline__, __artificial__))
+_m_to_int64 (__m64 __i)
+{
+  return (long long)__i;
+}
+#endif
+#endif
+
+#ifndef STEP /* step-by-step */
 #define STEP 0
+#endif
+
+#ifndef ZERO /* benchmark */
+#define ZERO 0
+#endif
+
 #define BYTE unsigned char
 #define WORD unsigned long long
 #define SIZE unsigned long long
@@ -10,6 +36,7 @@
 #define NI 16
 #define NO 8
 #define NS 80
+#define NB NI*SW
 
 static WORD accu[NO];
 
@@ -80,6 +107,7 @@ static void init(void)
 	size = 0ull;
 }
 
+#if !__MMX__
 #define ROTL(w,s) ((w) << (s) | (w) >> (64-s))
 #define ROTR(w,s) ((w) >> (s) | (w) << (64-s))
 #define SHR(w,s) ((w) >> (s))
@@ -89,13 +117,29 @@ static void init(void)
 #define BSIG1(x) (ROTR(x,14) ^ ROTR(x,18) ^ ROTR(x,41))
 #define SSIG0(x) (ROTR(x,1) ^ ROTR(x,8) ^ SHR(x,7))
 #define SSIG1(x) (ROTR(x,19) ^ ROTR(x,61) ^ SHR(x,6))
+#else
+#define ROTR(w,s) _m_por(_m_psrlqi(w,s),_m_psllqi(w,64-s))
+#define SHR(w,s) _m_psrlqi(w,s)
+#define CHO(x,y,z) _m_por(_m_pand(x,y),_m_pandn(x,z))
+#define MAJ(x,y,z) _m_por(_m_pand(x,y),_m_por(_m_pand(x,z),_m_pand(y,z)))
+#define BSIG0(x) _m_pxor(ROTR(x,28),_m_pxor(ROTR(x,34),ROTR(x,39)))
+#define BSIG1(x) _m_pxor(ROTR(x,14),_m_pxor(ROTR(x,18),ROTR(x,41)))
+#define SSIG0(x) _m_pxor(ROTR(x,1),_m_pxor(ROTR(x,8),SHR(x,7)))
+#define SSIG1(x) _m_pxor(ROTR(x,19),_m_pxor(ROTR(x,61),SHR(x,6)))
+#endif
 
-static void next(const BYTE ba[NI*SW])
+static void next(const BYTE ba[NB])
 {
 	int i,j;
+#if !__MMX__
 	WORD W[NS];
 	WORD H[NO];
 	WORD t1,t2;
+#else
+	__m64 W[NS];
+	__m64 H[NO];
+	__m64 t1,t2;
+#endif
 
 	for (i = 0; i < NI; ++i)
 #if BYTE_ORDER == BIG_ENDIAN
@@ -109,10 +153,17 @@ static void next(const BYTE ba[NI*SW])
 #if STEP
 	print(W,NI,"input");
 #endif
+#if !__MMX__
 	for (i = NI; i < NS; ++i)
 		W[i] = SSIG1(W[i-2]) + W[i-7] + SSIG0(W[i-15]) + W[i-16];
 	for (i = 0; i < NO; ++i)
 		H[i] = accu[i];
+#else
+	for (i = NI; i < NS; ++i)
+		W[i] = _mm_add_si64(_mm_add_si64(SSIG1(W[i-2]),W[i-7]),_mm_add_si64(SSIG0(W[i-15]),W[i-16]));
+	for (i = 0; i < NO; ++i)
+		H[i] = _m_from_int64(accu[i]);
+#endif
 	for (i = 0; i < NS; ++i) {
 #define a H[0]
 #define b H[1]
@@ -122,16 +173,29 @@ static void next(const BYTE ba[NI*SW])
 #define f H[5]
 #define g H[6]
 #define h H[7]
+#if !__MMX__
 		t1 = h + BSIG1(e) + CHO(e,f,g) + K[i] + W[i];
 		t2 = BSIG0(a) + MAJ(a,b,c);
+#else
+		t1 = _mm_add_si64(_mm_add_si64(h,BSIG1(e)),_mm_add_si64(CHO(e,f,g),_mm_add_si64(_m_from_int64(K[i]),W[i])));
+		t2 = _mm_add_si64(BSIG0(a),MAJ(a,b,c));
+#endif
 		h = g;
 		g = f;
 		f = e;
+#if !__MMX__
 		e = d + t1;
+#else
+		e = _mm_add_si64(d,t1);
+#endif
 		d = c;
 		c = b;
 		b = a;
+#if !__MMX__
 		a = t1 + t2;
+#else
+		a = _mm_add_si64(t1,t2);
+#endif
 #undef a
 #undef b
 #undef c
@@ -144,15 +208,20 @@ static void next(const BYTE ba[NI*SW])
 		print(H,NO,"round");
 #endif
 	}
+#if !__MMX__
 	for (i = 0; i < NO; ++i)
 		accu[i] += H[i];
-	size += NI*SW;
+#else
+	for (i = 0; i < NO; ++i)
+		accu[i] += _m_to_int64(H[i]);
+#endif
+	size += NB;
 }
 
-static void last(const BYTE ba[NI*SW],int nb)
+static void last(const BYTE ba[NB],int nb)
 {
 	int i,j,k,l;
-	BYTE temp[2*NI*SW];
+	BYTE temp[2*NB];
 
 	size += nb;
 	size *= 8;
@@ -161,8 +230,8 @@ static void last(const BYTE ba[NI*SW],int nb)
 	while (i < nb)
 		temp[i++] = *ba++;
 	temp[i++] = 0x80u;
-	l = 1 + ((i + SS) > NI*SW);
-	k = l*NI*SW - SS;
+	l = 1 + ((i + SS) > NB);
+	k = l*NB - SS;
 	while (i < k)
 		temp[i++] = 0u;
 #if BYTE_ORDER == BIG_ENDIAN
@@ -173,11 +242,11 @@ static void last(const BYTE ba[NI*SW],int nb)
 	for (;;)
 #endif
 		temp[i++] = BA(&size)[j];
-	if (i != NI*SW*l)
+	if (i != NB*l)
 		abort();
 	next(temp);
 	if (l > 1)
-		next(temp+NI*SW);
+		next(temp+NB);
 }
 
 static void pok(char fn[])
@@ -188,9 +257,11 @@ static void pok(char fn[])
 int main(int ac,char *av[])
 {
 	int an;
+	BYTE ar[NB];
+
+#if !ZERO
 	FILE *ap;
 	size_t rv;
-	BYTE ar[NI*SW];
 
 	if (ac <= 1)
 		return fprintf(stderr,"usage: %s <filename> ...\n",av[0]),
@@ -214,5 +285,36 @@ int main(int ac,char *av[])
 		if (fclose(ap))
 			perror("close()");
 	}
+#else
+	long al;
+	char *ae;
+
+	if (ac <= 1)
+		return fprintf(stderr,"usage: %s <length> ...\n",av[0]),
+			EXIT_FAILURE;
+	for (an = 0; an < NB; ++an)
+		ar[an] = 0;
+	for (an = 1; an < ac; ++an) {
+		#include <errno.h>
+
+		errno = 0;
+		al = strtol(av[an],&ae,10);
+		if (errno || al < 0 || *ae || ae == av[an]) {
+			if (!errno)
+				errno = EINVAL;
+			perror(av[an]);
+			continue;
+		}
+
+		init();
+		while (al >= NB) {
+			al -= NB;
+			next(ar);
+		}
+		last(ar,al);
+
+		pok(av[an]);
+	}
+#endif
 	return EXIT_SUCCESS;
 }

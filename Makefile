@@ -48,10 +48,10 @@ endef
 %-2v: %.c
 	$(BENCH.c)
 # bench-specific variables
-%-5m:	TARGET_ARCH=-m32 -march=pentium-mmx
-%-5v:	TARGET_ARCH=-m32 -march=pentium
-%-2m:	TARGET_ARCH=-m64 -march=core2 -mmmx
-%-2v:	TARGET_ARCH=-m64 -march=core2 -mno-mmx
+%-5m:	TARGET_ARCH=-m32 -march=core2 -mmmx -msse2
+%-5v:	TARGET_ARCH=-m32 -march=core2 -mno-mmx -mno-sse2
+%-2m:	TARGET_ARCH=-m64 -march=core2 -mmmx -msse2
+%-2v:	TARGET_ARCH=-m64 -march=core2 -mno-mmx -mno-sse2
 
 #
 # end of generic settings
@@ -64,17 +64,21 @@ endef
 ALL=hasher basher washer masher lasher dasher
 
 DB=dasher-5m dasher-5v dasher-2m dasher-2v
+WB=washer-5m washer-5v washer-2m washer-2v
 
 all:	$(ALL)
 
 db:	$(DB)
 
+wb:	$(WB)
+
 $(DB):	CPPFLAGS+=-DZERO -DVECT
-$(DB):	CFLAGS+=-fverbose-asm -save-temps -g0 -Ofast
+$(WB):	CPPFLAGS+=-DZERO
+$(DB) $(WB):	CFLAGS+=-fverbose-asm -save-temps -g0 -Ofast
 
 clean:
-	$(RM) $(ALL) $(DB)
-	$(RM) *.i *.o $(DB:=.s)
+	$(RM) $(ALL) $(DB) $(WB)
+	$(RM) *.i *.o $(DB:=.s) $(WB:=.s)
 
 #
 # end of specific rules
