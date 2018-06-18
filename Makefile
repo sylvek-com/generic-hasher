@@ -8,12 +8,10 @@
 # lasher: MD5
 # dasher: RIPEMD-{0,128,160}
 #
-######################
+
 #
 # begin gmake defaults
 #
-TARGET_ARCH=
-TARGER_MACH=
 # default
 LINK.c = $(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $(TARGET_ARCH)
 # recipe to execute (built-in):
@@ -72,7 +70,7 @@ all:	$(ALL)
 db:	$(DB)
 
 $(DB):	CPPFLAGS+=-DZERO -DVECT
-$(DB):	CFLAGS+=-fverbose-asm -save-temps -g0 -O1
+$(DB):	CFLAGS+=-fverbose-asm -save-temps -g0 -Ofast
 
 clean:
 	$(RM) $(ALL) $(DB)
