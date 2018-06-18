@@ -8,13 +8,76 @@
 # lasher: MD5
 # dasher: RIPEMD-{0,128,160}
 #
+######################
+#
+# begin gmake defaults
+#
+TARGET_ARCH=
+TARGER_MACH=
+# default
+LINK.c = $(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $(TARGET_ARCH)
+# recipe to execute (built-in):
+%: %.c
+	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o $@
+#
+# end gmake defaults
+#
+
+#
+# begin generic settings
+#
+
 CC=gcc
-CFLAGS=-Wall -Wextra -Werror -g -Og
+RM=rm -f
+MV=mv -f
+CFLAGS=-Wall -Wextra -Werror -g
 
-TGT=hasher basher washer masher lasher dasher
+# general recipe for generating benchmarking
+# that preserves the generated assembly file
+# using the same suffix as the target
+define BENCH.c
+	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o $@
+	$(RM) $(^:.c=.i) $(^:.c=.o)
+	$(MV) $(<:.c=.s) $@.s
+endef
+# bench-specific recipes
+%-5v: %.c
+	$(BENCH.c)
+%-5m: %.c
+	$(BENCH.c)
+%-2m: %.c
+	$(BENCH.c)
+%-2v: %.c
+	$(BENCH.c)
+# bench-specific variables
+%-5m:	TARGET_ARCH=-m32 -march=pentium-mmx
+%-5v:	TARGET_ARCH=-m32 -march=pentium
+%-2m:	TARGET_ARCH=-m64 -march=core2 -mmmx
+%-2v:	TARGET_ARCH=-m64 -march=core2 -mno-mmx
 
-all:	$(TGT)
+#
+# end of generic settings
+#
+
+#
+# begin of specific rules
+#
+
+ALL=hasher basher washer masher lasher dasher
+
+DB=dasher-5m dasher-5v dasher-2m dasher-2v
+
+all:	$(ALL)
+
+db:	$(DB)
+
+$(DB):	CPPFLAGS+=-DZERO -DVECT
+$(DB):	CFLAGS+=-fverbose-asm -save-temps -g0 -O1
 
 clean:
-	rm -f $(TGT)
-	rm -f *.o
+	$(RM) $(ALL) $(DB)
+	$(RM) *.i *.o $(DB:=.s)
+
+#
+# end of specific rules
+#
