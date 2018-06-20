@@ -1,10 +1,13 @@
 #include <stdio.h>
+#ifdef __x86_64__
+#undef __USE_EXTERN_INLINES // fix for error in gcc's stdlib-float.h
+#endif
 #include <stdlib.h>
 
 #ifdef __MMX__
 #include <emmintrin.h>
-/* fix for errors & omissions in mmintrin.h */
 #ifndef __x86_64__
+/* fix for errors & omissions in mmintrin.h */
 /* Intel intrinsic.  */
 extern __inline __m64  __attribute__((__gnu_inline__, __always_inline__, __artificial__))
 _m_from_int64 (long long __i)
@@ -20,11 +23,15 @@ _m_to_int64 (__m64 __i)
 #endif
 #endif
 
-#ifndef STEP /* step-by-step */
+#ifndef SWAP /* endian-swap builtins */
+#define SWAP 1
+#endif
+
+#ifndef STEP /* step-by-step tracing */
 #define STEP 0
 #endif
 
-#ifndef ZERO /* benchmark */
+#ifndef ZERO /* benchmark with zeros */
 #define ZERO 0
 #endif
 
@@ -142,6 +149,10 @@ static void next(const BYTE ba[NB])
 #endif
 
 	for (i = 0; i < NI; ++i)
+#if SWAP
+		((WORD*)W)[i] = __builtin_bswap64(((WORD*)ba)[i]);
+	(void)j;
+#else
 #if BYTE_ORDER == BIG_ENDIAN
 		for (j = 0; j <= SW-1; ++j)
 #elif BYTE_ORDER == LITTLE_ENDIAN
@@ -150,6 +161,7 @@ static void next(const BYTE ba[NB])
 		for (;;)
 #endif
 			BA(W)[i*SW+j] = *ba++;
+#endif
 #if STEP
 	print(W,NI,"input");
 #endif

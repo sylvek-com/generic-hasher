@@ -48,10 +48,10 @@ endef
 %-2v: %.c
 	$(BENCH.c)
 # bench-specific variables
-%-5m:	TARGET_ARCH=-m32 -march=core2 -mmmx -msse2
-%-5v:	TARGET_ARCH=-m32 -march=core2 -mno-mmx -mno-sse2
-%-2m:	TARGET_ARCH=-m64 -march=core2 -mmmx -msse2
-%-2v:	TARGET_ARCH=-m64 -march=core2 -mno-mmx -mno-sse2
+%-5m:	TARGET_ARCH=-m32 -march=core2 -mmmx -msse -msse2
+%-5v:	TARGET_ARCH=-m32 -march=core2 -mno-mmx -mno-sse -mno-sse2
+%-2m:	TARGET_ARCH=-m64 -march=core2 -mmmx -msse -msse2
+%-2v:	TARGET_ARCH=-m64 -march=core2 -mno-mmx -mno-sse -mno-sse2
 
 #
 # end of generic settings
@@ -78,7 +78,7 @@ $(DB) $(WB):	CFLAGS+=-fverbose-asm -save-temps -g0 -Ofast
 
 clean:
 	$(RM) $(ALL) $(DB) $(WB)
-	$(RM) *.i *.o $(DB:=.s) $(WB:=.s)
+	$(RM) *.i *.s *.o
 
 #
 # end of specific rules
