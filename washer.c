@@ -6,18 +6,23 @@
 
 #ifdef __MMX__
 #include <mmintrin.h>
-#define _mm_add_si64 add_mmx_no_sse2
+
+#ifndef MADD
+#define MADD 0
+#endif
+
+#define _mm_add_si64 madd
 extern __inline __m64 __attribute__((__gnu_inline__,__always_inline__))
-_mm_add_si64 (__m64 __m1,__m64 __m2)
+_mm_add_si64 (__m64 m1,__m64 m2)
 {
-	//return (__m64) ((long long)__m1 + (long long)__m2);
-#if 0
+#if MADD==1
 	asm("paddq\t%1,%0"
-	: "+y" (__m1) // outputs
-	: "ym" (__m2) // inputs
+	: "+y" (m1) // outputs
+	: "ym" (m2) // inputs
 	: // clobbers
 	);
-#elif 0
+	return m1;
+#elif MADD==2
 	__asm__("movd\t%0, %%eax\n\t"
 		"movd\t%1, %%ebx\n\t"
 		"addl\t%%ebx, %%eax\n\t"
@@ -30,23 +35,37 @@ _mm_add_si64 (__m64 __m1,__m64 __m2)
 		"movd\t%%edx, %1\n\t"
 		"psllq\t$32, %1\n\t"
 		"paddd\t%1, %0"
-	: "+y" (__m1), "+y" (__m2) // outputs
+	: "+y" (m1), "+y" (m2) // outputs
 	: // inputs
 	: "eax","ebx","ecx","edx" // clobbers
 	);
-#else
-	__asm__("movl\t%0, %%eax\n\t"
-		"addl\t%1, %%eax\n\t"
-		"movl\t4+%0, %%edx\n\t"
-		"adcl\t4+%1, %%edx\n\t"
+	return m1;
+#elif MADD==3
+	__m64 m0;
+	__asm__("movl\t%1, %%eax\n\t"
+		"addl\t%2, %%eax\n\t"
+		"movl\t4+%1, %%edx\n\t"
+		"adcl\t4+%2, %%edx\n\t"
 		"movl\t%%eax, %0\n\t"
-		"movl\t%%edx, 4+%0\n\t"
-	: "+m" (__m1) // outputs
-	: "m" (__m2) // inputs
+		"movl\t%%edx, 4+%0"
+	: "=m" (m0) // outputs
+	: "m" (m1), "m" (m2) // inputs
 	: "eax","edx" // clobbers
 	);
+	return m0;
+#elif MADD==4
+	__asm__("movl\t%1, %%eax\n\t"
+		"addl\t%%eax, %0\n\t"
+		"movl\t4+%1, %%edx\n\t"
+		"adcl\t%%edx, 4+%0"
+	: "+m" (m1) // outputs
+	: "m" (m2) // inputs
+	: "eax","edx" // clobbers
+	);
+	return m1;
+#else
+	return (__m64) ((long long)m1 + (long long)m2);
 #endif
-	return __m1;
 }
 #ifndef __x86_64__
 /* fix for errors & omissions in mmintrin.h */
