@@ -5,7 +5,49 @@
 #include <stdlib.h>
 
 #ifdef __MMX__
-#include <emmintrin.h>
+#include <mmintrin.h>
+#define _mm_add_si64 add_mmx_no_sse2
+extern __inline __m64 __attribute__((__gnu_inline__,__always_inline__))
+_mm_add_si64 (__m64 __m1,__m64 __m2)
+{
+	//return (__m64) ((long long)__m1 + (long long)__m2);
+#if 0
+	asm("paddq\t%1,%0"
+	: "+y" (__m1) // outputs
+	: "ym" (__m2) // inputs
+	: // clobbers
+	);
+#elif 0
+	__asm__("movd\t%0, %%eax\n\t"
+		"movd\t%1, %%ebx\n\t"
+		"addl\t%%ebx, %%eax\n\t"
+		"psrlq\t$32, %0\n\t"
+		"psrlq\t$32, %1\n\t"
+		"movd\t%0, %%edx\n\t"
+		"movd\t%1, %%ecx\n\t"
+		"adcl\t%%ecx, %%edx\n\t"
+		"movd\t%%eax, %0\n\t"
+		"movd\t%%edx, %1\n\t"
+		"psllq\t$32, %1\n\t"
+		"paddd\t%1, %0"
+	: "+y" (__m1), "+y" (__m2) // outputs
+	: // inputs
+	: "eax","ebx","ecx","edx" // clobbers
+	);
+#else
+	__asm__("movl\t%0, %%eax\n\t"
+		"addl\t%1, %%eax\n\t"
+		"movl\t4+%0, %%edx\n\t"
+		"adcl\t4+%1, %%edx\n\t"
+		"movl\t%%eax, %0\n\t"
+		"movl\t%%edx, 4+%0\n\t"
+	: "+m" (__m1) // outputs
+	: "m" (__m2) // inputs
+	: "eax","edx" // clobbers
+	);
+#endif
+	return __m1;
+}
 #ifndef __x86_64__
 /* fix for errors & omissions in mmintrin.h */
 /* Intel intrinsic.  */
