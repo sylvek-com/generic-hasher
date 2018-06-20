@@ -48,8 +48,8 @@ endef
 %-2v: %.c
 	$(BENCH.c)
 # bench-specific variables
-%-5m:	TARGET_ARCH=-m32 -march=core2 -mmmx -msse -msse2
-%-5v:	TARGET_ARCH=-m32 -march=core2 -mno-mmx -mno-sse -mno-sse2
+%-5m:	TARGET_ARCH=-m32 -march=pentium2 -mmmx
+%-5v:	TARGET_ARCH=-m32 -march=pentium2 -mno-mmx
 %-2m:	TARGET_ARCH=-m64 -march=core2 -mmmx -msse -msse2
 %-2v:	TARGET_ARCH=-m64 -march=core2 -mno-mmx -mno-sse -mno-sse2
 

@@ -10,37 +10,36 @@
 #ifndef MADD
 #define MADD 0
 #endif
-
+// various ways of avoiding the dependency on SSE2 paddq instruction
 #define _mm_add_si64 madd
 extern __inline __m64 __attribute__((__gnu_inline__,__always_inline__))
 _mm_add_si64 (__m64 m1,__m64 m2)
 {
-#if MADD==1
+#if MADD==1 // fastest, but cheating
 	asm("paddq\t%1,%0"
 	: "+y" (m1) // outputs
 	: "ym" (m2) // inputs
 	: // clobbers
 	);
 	return m1;
-#elif MADD==2
+#elif MADD==2 // moderately fast
 	__asm__("movd\t%0, %%eax\n\t"
 		"movd\t%1, %%ebx\n\t"
-		"addl\t%%ebx, %%eax\n\t"
-		"psrlq\t$32, %0\n\t"
-		"psrlq\t$32, %1\n\t"
+		"punpckhdq %0, %0\n\t"
+		"punpckhdq %1, %1\n\t"
 		"movd\t%0, %%edx\n\t"
 		"movd\t%1, %%ecx\n\t"
+		"addl\t%%ebx, %%eax\n\t"
 		"adcl\t%%ecx, %%edx\n\t"
 		"movd\t%%eax, %0\n\t"
 		"movd\t%%edx, %1\n\t"
-		"psllq\t$32, %1\n\t"
-		"paddd\t%1, %0"
+		"punpckldq %1, %0"
 	: "+y" (m1), "+y" (m2) // outputs
 	: // inputs
 	: "eax","ebx","ecx","edx" // clobbers
 	);
 	return m1;
-#elif MADD==3
+#elif MADD==3 // slowest
 	__m64 m0;
 	__asm__("movl\t%1, %%eax\n\t"
 		"addl\t%2, %%eax\n\t"
@@ -53,7 +52,7 @@ _mm_add_si64 (__m64 m1,__m64 m2)
 	: "eax","edx" // clobbers
 	);
 	return m0;
-#elif MADD==4
+#elif MADD==4 // moderately slow
 	__asm__("movl\t%1, %%eax\n\t"
 		"addl\t%%eax, %0\n\t"
 		"movl\t4+%1, %%edx\n\t"
@@ -63,7 +62,7 @@ _mm_add_si64 (__m64 m1,__m64 m2)
 	: "eax","edx" // clobbers
 	);
 	return m1;
-#else
+#else // fastest without cheating
 	return (__m64) ((long long)m1 + (long long)m2);
 #endif
 }
