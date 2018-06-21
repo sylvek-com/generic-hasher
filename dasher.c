@@ -1,4 +1,7 @@
 #include <stdio.h>
+#ifdef __x86_64__ // 64-bit compile with SSE and above disabled
+#undef __USE_EXTERN_INLINES // fix for error in gcc's stdlib-float.h
+#endif
 #include <stdlib.h>
 
 #ifdef __MMX__

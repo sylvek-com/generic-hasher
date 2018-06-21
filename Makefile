@@ -28,14 +28,14 @@ LINK.c = $(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $(TARGET_ARCH)
 CC=gcc
 RM=rm -f
 MV=mv -f
-CFLAGS=-Wall -Wextra -Werror -g
+CFLAGS=-Wall -Wextra -Wno-error -g
 
 # general recipe for generating benchmarking
 # that preserves the generated assembly file
 # using the same suffix as the target
 define BENCH.c
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o $@
-	$(RM) $(^:.c=.i) $(^:.c=.o)
+	$(RM) $(^:.c=.i) $(^:.c=.o) $(^:.c=.bc)
 	$(MV) $(<:.c=.s) $@.s
 endef
 # bench-specific recipes
@@ -78,7 +78,7 @@ $(DB) $(WB):	CFLAGS+=-fverbose-asm -save-temps -g0 -Ofast
 
 clean:
 	$(RM) $(ALL) $(DB) $(WB)
-	$(RM) *.i *.s *.o
+	$(RM) *.i *.bc *.s *.o
 
 #
 # end of specific rules

@@ -1,5 +1,5 @@
 #include <stdio.h>
-#ifdef __x86_64__
+#ifdef __x86_64__ // 64-bit compile with SSE and above disabled
 #undef __USE_EXTERN_INLINES // fix for error in gcc's stdlib-float.h
 #endif
 #include <stdlib.h>
@@ -66,7 +66,7 @@ _mm_add_si64 (__m64 m1,__m64 m2)
 	return (__m64) ((long long)m1 + (long long)m2);
 #endif
 }
-#ifndef __x86_64__
+#if !defined(__x86_64__) && !defined(__clang__)
 /* fix for errors & omissions in mmintrin.h */
 /* Intel intrinsic.  */
 extern __inline __m64  __attribute__((__gnu_inline__, __always_inline__, __artificial__))
