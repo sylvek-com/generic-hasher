@@ -1,4 +1,7 @@
 #include <stdio.h>
+#ifdef __x86_64__ // 64-bit compile with SSE and above disabled
+#undef __USE_EXTERN_INLINES // fix for error in gcc's stdlib-float.h
+#endif
 #include <stdlib.h>
 
 #ifndef ZERO /* benchmark */
@@ -69,7 +72,11 @@ extern void sha1_update_intel(WORD *hash, const BYTE* input);
 
 static void next(const BYTE ba[NB])
 {
+#ifndef INTEL_SHA1_SINGLEBLOCK
 	sha1_update_intel(accu,ba,1);
+#else
+	sha1_update_intel(accu,ba);
+#endif
 	size += NB;
 }
 

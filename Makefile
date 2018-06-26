@@ -79,13 +79,14 @@ $(DB):	CPPFLAGS+=-DZERO -DVECT
 $(WB) $(HB):	CPPFLAGS+=-DZERO
 $(DB) $(WB) $(HB):	CFLAGS+=-fverbose-asm -save-temps -g0 -Ofast
 
+$(AH):	CPPFLAGS+=-DINTEL_SHA1_SINGLEBLOCK
 ahasher:	ahasher.c intel_sha1.o
 ahasher-2:	CPPFLAGS+=-DZERO
 ahasher-2:	CFLAGS+=-g0 -Ofast
 ahasher-2:	ahasher.c intel_sha1.o
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o $@
 intel_sha1.o:	intel_sha1.asm
-	nasm -felf64 -g -Fdwarf -o $@ -l ${@:.o=.lst} $<
+	nasm -felf64 -g -Fdwarf -o $@ -l ${@:.o=.lst} $(CPPFLAGS) $<
 
 clean:
 	$(RM) $(ALL)

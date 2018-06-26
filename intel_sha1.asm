@@ -89,8 +89,8 @@
 ; macro implements SHA-1 function's body for single or several 64-byte blocks
 ; first param: function's name
 ; second param: =0 - function implements single 64-byte block hash
-;               =1 - function implements multiple64-byte blocks hash
-;3rd function's argument is a number, greater 0, of 64-byte blocks to calc hash for
+;               =1 - function implements multiple 64-byte blocks hash
+; 3rd function's argument is a number, greater 0, of 64-byte blocks to calc hash for
 ;
 %macro	SHA1_VECTOR_ASM 2
 	align	4096
