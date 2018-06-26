@@ -37,7 +37,6 @@
 #else
 #error unimplemented RIPE variant
 #endif
-#define NS 16
 #define NB NI*SW
 
 static WORD accu[NO];
