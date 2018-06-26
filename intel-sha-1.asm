@@ -32,20 +32,20 @@
 ;; can be replaced with a default SHA-1 update function name
 %define INTEL_SHA1_UPDATE_DEFAULT_DISPATCHsha1_intel_non_ssse3_cpu_stub_
 %else
-externINTEL_SHA1_UPDATE_DEFAULT_DISPATCH
+	extern	INTEL_SHA1_UPDATE_DEFAULT_DISPATCH
 %endif
 ;; provide alternative SHA-1 update function's name here
-%ifndef INTEL_SHA1_UPDATE_FUNCNAME
-%define INTEL_SHA1_UPDATE_FUNCNAME sha1_update_intel
+%ifndef	INTEL_SHA1_UPDATE_FUNCNAME
+%define	INTEL_SHA1_UPDATE_FUNCNAME sha1_update_intel
 %endif
-global INTEL_SHA1_UPDATE_FUNCNAME
-%ifndef INTEL_SHA1_SINGLEBLOCK
-%assign multiblock 1
+	global	INTEL_SHA1_UPDATE_FUNCNAME
+%ifndef	INTEL_SHA1_SINGLEBLOCK
+%assign	multiblock 1
 %else
-%assign multiblock 0
+%assign	multiblock 0
 %endif
-bits 64
-default rel
+	bits 64
+	default	rel
 %ifdef WIN_ABI
 %xdefine arg1 rcx
 %xdefine arg2 rdx
@@ -58,7 +58,7 @@ default rel
 %xdefine ctx arg1
 %xdefine buf arg2
 %xdefine cnt arg3
-%macro REGALLOC 0
+%macro	REGALLOC 0
 %xdefine A ecx
 %xdefine B esi
 %xdefine C edi
@@ -89,68 +89,68 @@ default rel
 ; macro implements SHA-1 function's body for single or several 64-byte blocks
 ; first param: function's name
 ; second param: =0 - function implements single 64-byte block hash
-; =1 - function implements multiple64-byte blocks hash
+;               =1 - function implements multiple64-byte blocks hash
 ;3rd function's argument is a number, greater 0, of 64-byte blocks to calc hash for
 ;
 %macroSHA1_VECTOR_ASM2
-align 4096
+	align	4096
 %1:
-push rbx
-push rbp
+	push	rbx
+	push	rbp
 %ifdef WIN_ABI
-push rdi
-push rsi
+	push	rdi
+	push	rsi
 %xdefine stack_size (16*4 + 16*5 + 8)
 %else
 %xdefine stack_size (16*4 + 8)
 %endif
-sub rsp, stack_size
+	sub	rsp, stack_size
 %ifdef WIN_ABI
 %xdefine xmm_save_base (rsp + 16*4)
-xmm_mov [xmm_save_base + 0*16], xmm6
-xmm_mov [xmm_save_base + 1*16], xmm7
-xmm_mov [xmm_save_base + 2*16], xmm8
-xmm_mov [xmm_save_base + 3*16], xmm9
-xmm_mov [xmm_save_base + 4*16], xmm10
+	xmm_mov [xmm_save_base + 0*16], xmm6
+	xmm_mov [xmm_save_base + 1*16], xmm7
+	xmm_mov [xmm_save_base + 2*16], xmm8
+	xmm_mov [xmm_save_base + 3*16], xmm9
+	xmm_mov [xmm_save_base + 4*16], xmm10
 %endif
-mov HASH_PTR, ctx
-mov BUFFER_PTR, buf
+	mov HASH_PTR, ctx
+	mov BUFFER_PTR, buf
 %if (%2 == 1)
-shl cnt, 6 ;; mul by 64
-add cnt, buf
-mov BUFFER_END, cnt
+	shl cnt, 6 ;; mul by 64
+	add cnt, buf
+	mov BUFFER_END, cnt
 %endif
-lea K_BASE, [K_XMM_AR]
-xmm_mov XMM_SHUFB_BSWAP, [bswap_shufb_ctl]
+	lea K_BASE, [K_XMM_AR]
+	xmm_mov XMM_SHUFB_BSWAP, [bswap_shufb_ctl]
 SHA1_PIPELINED_MAIN_BODY %2
 %ifdef WIN_ABI
-xmm_mov xmm6, [xmm_save_base + 0*16]
-xmm_mov xmm7, [xmm_save_base + 1*16]
-xmm_mov xmm8, [xmm_save_base + 2*16]
-xmm_mov xmm9, [xmm_save_base + 3*16]
-xmm_mov xmm10,[xmm_save_base + 4*16]
+	xmm_mov xmm6, [xmm_save_base + 0*16]
+	xmm_mov xmm7, [xmm_save_base + 1*16]
+	xmm_mov xmm8, [xmm_save_base + 2*16]
+	xmm_mov xmm9, [xmm_save_base + 3*16]
+	xmm_mov xmm10,[xmm_save_base + 4*16]
 %endif
-add rsp, stack_size
+	add rsp, stack_size
 %ifdef WIN_ABI
-pop rsi
-pop rdi
+	pop rsi
+	pop rdi
 %endif
-pop rbp
-pop rbx
-ret
+	pop rbp
+	pop rbx
+	ret
 %endmacro
 ;--------------------------------------------
 ; macro implements 80 rounds of SHA-1, for one 64-byte block or multiple blocks with s/w pipelining
 ; macro param: =0 - process single 64-byte block
-;=1 - multiple blocks
+;              =1 - multiple blocks
 ;
 %macro SHA1_PIPELINED_MAIN_BODY 1
 REGALLOC
-mov A, [HASH_PTR ]
-mov B, [HASH_PTR+ 4]
-mov C, [HASH_PTR+ 8]
-mov D, [HASH_PTR+12]
-mov E, [HASH_PTR+16]
+	mov A, [HASH_PTR ]
+	mov B, [HASH_PTR+ 4]
+	mov C, [HASH_PTR+ 8]
+	mov D, [HASH_PTR+12]
+	mov E, [HASH_PTR+16]
 %assign i 0
 %repW_PRECALC_AHEAD
 W_PRECALC i
@@ -159,98 +159,98 @@ W_PRECALC i
 %xdefine F F1
 %if (%1 == 1) ;; code loops through more than one block
 %%_loop:
-cmp BUFFER_PTR, K_BASE;; we use K_BASE value as a signal of a last block,
-jne %%_begin;; it is set below by: cmovae BUFFER_PTR, K_BASE
-jmp %%_end
-align 32
+	cmp BUFFER_PTR, K_BASE;; we use K_BASE value as a signal of a last block,
+	jne %%_begin;; it is set below by: cmovae BUFFER_PTR, K_BASE
+	jmp %%_end
+	align 32
 %%_begin:
 %endif
-RR A,B,C,D,E,0
-RR D,E,A,B,C,2
-RR B,C,D,E,A,4
-RR E,A,B,C,D,6
-RR C,D,E,A,B,8
-RR A,B,C,D,E,10
-RR D,E,A,B,C,12
-RR B,C,D,E,A,14
-RR E,A,B,C,D,16
-RR C,D,E,A,B,18
+	RR A,B,C,D,E,0
+	RR D,E,A,B,C,2
+	RR B,C,D,E,A,4
+	RR E,A,B,C,D,6
+	RR C,D,E,A,B,8
+	RR A,B,C,D,E,10
+	RR D,E,A,B,C,12
+	RR B,C,D,E,A,14
+	RR E,A,B,C,D,16
+	RR C,D,E,A,B,18
 %xdefine F F2
-RR A,B,C,D,E,20
-RR D,E,A,B,C,22
-RR B,C,D,E,A,24
-RR E,A,B,C,D,26
-RR C,D,E,A,B,28
-RR A,B,C,D,E,30
-RR D,E,A,B,C,32
-RR B,C,D,E,A,34
-RR E,A,B,C,D,36
-RR C,D,E,A,B,38
+	RR A,B,C,D,E,20
+	RR D,E,A,B,C,22
+	RR B,C,D,E,A,24
+	RR E,A,B,C,D,26
+	RR C,D,E,A,B,28
+	RR A,B,C,D,E,30
+	RR D,E,A,B,C,32
+	RR B,C,D,E,A,34
+	RR E,A,B,C,D,36
+	RR C,D,E,A,B,38
 %xdefine F F3
-RR A,B,C,D,E,40
-RR D,E,A,B,C,42
-RR B,C,D,E,A,44
-RR E,A,B,C,D,46
-RR C,D,E,A,B,48
-RR A,B,C,D,E,50
-RR D,E,A,B,C,52
-RR B,C,D,E,A,54
-RR E,A,B,C,D,56
-RR C,D,E,A,B,58
+	RR A,B,C,D,E,40
+	RR D,E,A,B,C,42
+	RR B,C,D,E,A,44
+	RR E,A,B,C,D,46
+	RR C,D,E,A,B,48
+	RR A,B,C,D,E,50
+	RR D,E,A,B,C,52
+	RR B,C,D,E,A,54
+	RR E,A,B,C,D,56
+	RR C,D,E,A,B,58
 %xdefine F F4
 %if (%1 == 1) ;; if code loops through more than one block
-add BUFFER_PTR, 64;; move to next 64-byte block
-cmp BUFFER_PTR, BUFFER_END;; check if current block is the last one
-cmovae BUFFER_PTR, K_BASE ;; smart way to signal the last iteration
+	add BUFFER_PTR, 64;; move to next 64-byte block
+	cmp BUFFER_PTR, BUFFER_END;; check if current block is the last one
+	cmovae BUFFER_PTR, K_BASE ;; smart way to signal the last iteration
 %else
 %xdefine W_NO_TAIL_PRECALC 1;; no software pipelining for single block interface
 %endif
-RR A,B,C,D,E,60
-RR D,E,A,B,C,62
-RR B,C,D,E,A,64
-RR E,A,B,C,D,66
-RR C,D,E,A,B,68
-RR A,B,C,D,E,70
-RR D,E,A,B,C,72
-RR B,C,D,E,A,74
-RR E,A,B,C,D,76
-RR C,D,E,A,B,78
-UPDATE_HASH [HASH_PTR ],A
-UPDATE_HASH [HASH_PTR+ 4],B
-UPDATE_HASH [HASH_PTR+ 8],C
-UPDATE_HASH [HASH_PTR+12],D
-UPDATE_HASH [HASH_PTR+16],E
+	RR A,B,C,D,E,60
+	RR D,E,A,B,C,62
+	RR B,C,D,E,A,64
+	RR E,A,B,C,D,66
+	RR C,D,E,A,B,68
+	RR A,B,C,D,E,70
+	RR D,E,A,B,C,72
+	RR B,C,D,E,A,74
+	RR E,A,B,C,D,76
+	RR C,D,E,A,B,78
+	UPDATE_HASH [HASH_PTR ],A
+	UPDATE_HASH [HASH_PTR+ 4],B
+	UPDATE_HASH [HASH_PTR+ 8],C
+	UPDATE_HASH [HASH_PTR+12],D
+	UPDATE_HASH [HASH_PTR+16],E
 %if (%1 == 1)
-jmp %%_loop
-align 32
+	jmp %%_loop
+	align 32
 %%_end:
 %endif
 %xdefine W_NO_TAIL_PRECALC 0
 %xdefine F %error
 %endmacro
 %macro F1 3
-mov T1,%2
-xor T1,%3
-and T1,%1
-xor T1,%3
+	mov T1,%2
+	xor T1,%3
+	and T1,%1
+	xor T1,%3
 %endmacro
 %macro F2 3
-mov T1,%3
-xor T1,%2
-xor T1,%1
+	mov T1,%3
+	xor T1,%2
+	xor T1,%1
 %endmacro
 %macro F3 3
-mov T1,%2
-mov T2,%1
-orT1,%1
-and T2,%2
-and T1,%3
-orT1,T2
+	mov	T1,%2
+	mov	T2,%1
+	or	T1,%1
+	and T2,%2
+	and T1,%3
+	or T1,T2
 %endmacro
 %define F4 F2
 %macro UPDATE_HASH 2
-add %2, %1
-mov %1, %2
+	add %2, %1
+	mov %1, %2
 %endmacro
 %macro W_PRECALC 1
 %xdefine i (%1)
@@ -267,14 +267,14 @@ mov %1, %2
 %if (W_NO_TAIL_PRECALC == 0)
 %xdefine i ((%1) % 80);; pre-compute for the next iteration
 %if (i == 0)
-W_PRECALC_RESET
+	W_PRECALC_RESET
 %endif
-W_PRECALC_00_15
+	W_PRECALC_00_15
 %endif
 %elif (i < 32)
-W_PRECALC_16_31
+	W_PRECALC_16_31
 %elif (i < 80) ;; rounds 32-79
-W_PRECALC_32_79
+	W_PRECALC_32_79
 %endif
 %endmacro
 %macro W_PRECALC_RESET 0
@@ -305,15 +305,15 @@ W_PRECALC_32_79
 %macro W_PRECALC_00_15 0
 ;; message scheduling pre-compute for rounds 0-15
 %if ((i & 3) == 0);; blended SSE and ALU instruction scheduling, 1 vector iteration per 4 rounds
-movdqu W_TMP, [BUFFER_PTR + (i * 4)]
+	movdqu W_TMP, [BUFFER_PTR + (i * 4)]
 %elif ((i & 3) == 1)
-pshufb W_TMP, XMM_SHUFB_BSWAP
-movdqa W, W_TMP
+	pshufb W_TMP, XMM_SHUFB_BSWAP
+	movdqa W, W_TMP
 %elif ((i & 3) == 2)
-padddW_TMP, [K_BASE]
+	padddW_TMP, [K_BASE]
 %elif ((i & 3) == 3)
-movdqa[WK(i&~3)], W_TMP
-W_PRECALC_ROTATE
+	movdqa[WK(i&~3)], W_TMP
+	W_PRECALC_ROTATE
 %endif
 %endmacro
 %macro W_PRECALC_16_31 0
@@ -324,31 +324,31 @@ W_PRECALC_ROTATE
 ;; "brute force" vectorization for rounds 16-31 only due to w[i]->w[i-3] dependency
 ;;
 %if ((i & 3) == 0);; blended SSE and ALU instruction scheduling, 1 vector iteration per 4 rounds
-movdqaW, W_minus_12
-palignr W, W_minus_16, 8 ;; w[i-14]
-movdqaW_TMP, W_minus_04
-psrldqW_TMP, 4 ;; w[i-3]
-pxorW, W_minus_08
+	movdqaW, W_minus_12
+	palignr W, W_minus_16, 8 ;; w[i-14]
+	movdqaW_TMP, W_minus_04
+	psrldqW_TMP, 4 ;; w[i-3]
+	pxorW, W_minus_08
 %elif ((i & 3) == 1)
-pxorW_TMP, W_minus_16
-pxorW, W_TMP
-movdqaW_TMP2, W
-movdqaW_TMP, W
-pslldqW_TMP2, 12
+	pxorW_TMP, W_minus_16
+	pxorW, W_TMP
+	movdqaW_TMP2, W
+	movdqaW_TMP, W
+	pslldqW_TMP2, 12
 %elif ((i & 3) == 2)
-psrld W, 31
-pslld W_TMP, 1
-por W_TMP, W
-movdqaW, W_TMP2
-psrld W_TMP2, 30
-pslld W, 2
+	psrld W, 31
+	pslld W_TMP, 1
+	por W_TMP, W
+	movdqaW, W_TMP2
+	psrld W_TMP2, 30
+	pslld W, 2
 %elif ((i & 3) == 3)
-pxorW_TMP, W
-pxorW_TMP, W_TMP2
-movdqaW, W_TMP
-paddd W_TMP, [K_BASE + K_XMM]
-movdqa[WK(i&~3)],W_TMP
-W_PRECALC_ROTATE
+	pxorW_TMP, W
+	pxorW_TMP, W_TMP2
+	movdqaW, W_TMP
+	paddd W_TMP, [K_BASE + K_XMM]
+	movdqa[WK(i&~3)],W_TMP
+	W_PRECALC_ROTATE
 %endif
 %endmacro
 %macro W_PRECALC_32_79 0
@@ -357,22 +357,22 @@ W_PRECALC_ROTATE
 ;; allows more efficient vectorization since w[i]=>w[i-3] dependency is broken
 ;;
 %if ((i & 3) == 0);; blended SSE and ALU instruction scheduling, 1 vector iteration per 4 rounds
-movdqaW_TMP, W_minus_04
-pxorW, W_minus_28 ;; W is W_minus_32 before xor
-palignr W_TMP, W_minus_08, 8
+	movdqaW_TMP, W_minus_04
+	pxorW, W_minus_28 ;; W is W_minus_32 before xor
+	palignr W_TMP, W_minus_08, 8
 %elif ((i & 3) == 1)
-pxorW, W_minus_16
-pxorW, W_TMP
-movdqaW_TMP, W
+	pxorW, W_minus_16
+	pxorW, W_TMP
+	movdqaW_TMP, W
 %elif ((i & 3) == 2)
-psrld W, 30
-pslld W_TMP, 2
-por W_TMP, W
+	psrld W, 30
+	pslld W_TMP, 2
+	por W_TMP, W
 %elif ((i & 3) == 3)
-movdqaW, W_TMP
-paddd W_TMP, [K_BASE + K_XMM]
-movdqa[WK(i&~3)],W_TMP
-W_PRECALC_ROTATE
+	movdqaW, W_TMP
+	paddd W_TMP, [K_BASE + K_XMM]
+	movdqa[WK(i&~3)],W_TMP
+	W_PRECALC_ROTATE
 %endif
 %endmacro
 %macro RR 6 ;; RR does two rounds of SHA-1 back to back with W pre-calculation
@@ -382,81 +382,81 @@ W_PRECALC_ROTATE
 ;; D = C
 ;; E = D
 ;; B = TEMP
-W_PRECALC (%6 + W_PRECALC_AHEAD)
-F%2, %3, %4 ;; F returns result in T1
-add%5, [WK(%6)]
-rol%2, 30
-movT2, %1
-add%4, [WK(%6 + 1)]
-rolT2, 5
-add%5, T1
-W_PRECALC (%6 + W_PRECALC_AHEAD + 1)
-addT2, %5
-mov%5, T2
-rolT2, 5
-add%4, T2
-F%1, %2, %3;; F returns result in T1
-add%4, T1
-rol%1, 30
+	W_PRECALC (%6 + W_PRECALC_AHEAD)
+	F%2, %3, %4 ;; F returns result in T1
+	add%5, [WK(%6)]
+	rol%2, 30
+	movT2, %1
+	add%4, [WK(%6 + 1)]
+	rolT2, 5
+	add%5, T1
+	W_PRECALC (%6 + W_PRECALC_AHEAD + 1)
+	addT2, %5
+	mov%5, T2
+	rolT2, 5
+	add%4, T2
+	F%1, %2, %3;; F returns result in T1
+	add%4, T1
+	rol%1, 30
 ;; write:%1, %2
 ;; rotate: %1<=%4, %2<=%5, %3<=%1, %4<=%2, %5<=%3
 %endmacro
 ;;----------------------
-section .data align=128
+	section .data align=128
 %xdefine K1 0x5a827999
 %xdefine K2 0x6ed9eba1
 %xdefine K3 0x8f1bbcdc
 %xdefine K4 0xca62c1d6
-align 128
+	align 128
 K_XMM_AR:
-DD K1, K1, K1, K1
-DD K2, K2, K2, K2
-DD K3, K3, K3, K3
-DD K4, K4, K4, K4
-align 16
+	DD K1, K1, K1, K1
+	DD K2, K2, K2, K2
+	DD K3, K3, K3, K3
+	DD K4, K4, K4, K4
+	align 16
 bswap_shufb_ctl:
-DD 00010203h
-DD 04050607h
-DD 08090a0bh
-DD 0c0d0e0fh
+	DD 00010203h
+	DD 04050607h
+	DD 08090a0bh
+	DD 0c0d0e0fh
 ;; dispatch pointer, points to the init routine for the first invocation
 sha1_update_intel_dispatched:
-DQsha1_update_intel_init_
+	DQsha1_update_intel_init_
 ;;----------------------
-section .text align=4096
+	section .text align=4096
 SHA1_VECTOR_ASM sha1_update_intel_ssse3_, multiblock
-align 32
+	align 32
 sha1_update_intel_init_: ;; we get here with the first time invocation
-callsha1_update_intel_dispacth_init_
+	callsha1_update_intel_dispacth_init_
 INTEL_SHA1_UPDATE_FUNCNAME:;; we get here after init
-jmp qword [sha1_update_intel_dispatched]
+	jmp qword [sha1_update_intel_dispatched]
 ;; CPUID feature flag based dispatch
 sha1_update_intel_dispacth_init_:
-pushrax
-pushrbx
-pushrcx
-pushrdx
-pushrsi
-lea rsi, [INTEL_SHA1_UPDATE_DEFAULT_DISPATCH]
-mov eax, 1
-cpuid
-testecx, 0200h;; SSSE3 support, CPUID.1.ECX[bit 9]
-jz_done
-lea rsi, [sha1_update_intel_ssse3_]
+	pushrax
+	pushrbx
+	pushrcx
+	pushrdx
+	pushrsi
+	lea rsi, [INTEL_SHA1_UPDATE_DEFAULT_DISPATCH]
+	mov eax, 1
+	cpuid
+	testecx, 0200h;; SSSE3 support, CPUID.1.ECX[bit 9]
+	jz_done
+	lea rsi, [sha1_update_intel_ssse3_]
 _done:
-mov [sha1_update_intel_dispatched], rsi
-pop rsi
-pop rdx
-pop rcx
-pop rbx
-pop rax
-ret
+	mov [sha1_update_intel_dispatched], rsi
+	pop rsi
+	pop rdx
+	pop rcx
+	pop rbx
+	pop rax
+	ret
 ;;----------------------
 ;; in the case a default SHA-1 update function implementation was not provided
 ;; and code was invoked on a non-SSSE3 supporting CPU, dispatch handles this
 ;; failure in a safest way - jumps to the stub function with UD2 instruction below
 sha1_intel_non_ssse3_cpu_stub_:
-ud2 ;; in the case no default SHA-1 was provided non-SSSE3 CPUs safely fail here
-ret
+	ud2 ;; in the case no default SHA-1 was provided non-SSSE3 CPUs safely fail here
+	ret
 ; END
 ;----------------------
