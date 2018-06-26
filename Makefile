@@ -65,20 +65,33 @@ ALL=hasher basher washer masher lasher dasher
 
 DB=dasher-5m dasher-5v dasher-2m dasher-2v
 WB=washer-5m washer-5v washer-2m washer-2v
+HB=hasher-5m hasher-5v hasher-2m hasher-2v
+AH=ahasher ahasher-2
 
 all:	$(ALL)
 
 db:	$(DB)
-
 wb:	$(WB)
+hb:	$(HB)
+ah:	$(AH)
 
 $(DB):	CPPFLAGS+=-DZERO -DVECT
-$(WB):	CPPFLAGS+=-DZERO
-$(DB) $(WB):	CFLAGS+=-fverbose-asm -save-temps -g0 -Ofast
+$(WB) $(HB):	CPPFLAGS+=-DZERO
+$(DB) $(WB) $(HB):	CFLAGS+=-fverbose-asm -save-temps -g0 -Ofast
+
+ahasher:	ahasher.c intel_sha1.o
+ahasher-2:	CPPFLAGS+=-DZERO
+ahasher-2:	CFLAGS+=-g0 -Ofast
+ahasher-2:	ahasher.c intel_sha1.o
+	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o $@
+intel_sha1.o:	intel_sha1.asm
+	nasm -felf64 -g -Fdwarf -o $@ -l ${@:.o=.lst} $<
 
 clean:
-	$(RM) $(ALL) $(DB) $(WB)
-	$(RM) *.i *.bc *.s *.o
+	$(RM) $(ALL)
+	$(RM) $(DB) $(WB)
+	$(RM) $(HB) $(AH)
+	$(RM) *.i *.bc *.s *.o *.lst
 
 #
 # end of specific rules

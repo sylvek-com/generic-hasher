@@ -3,11 +3,14 @@
 #executables
 ?asher
 ?asher-*
+??asher
+??asher-*
 a.out
-#assembly sources
+#assembly files
 *.s
 *.asm
 *.cod
+*.lst
 #object files
 *.o
 *.obj
