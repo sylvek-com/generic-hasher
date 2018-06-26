@@ -4,7 +4,11 @@
 #endif
 #include <stdlib.h>
 
-#ifdef __MMX__
+#ifndef VECT /* vectorisation */
+#define VECT 0
+#endif
+
+#if VECT
 #include <mmintrin.h>
 
 #ifndef MADD
@@ -84,7 +88,7 @@ _m_to_int64 (__m64 __i)
 #endif
 
 #ifndef SWAP /* endian-swap builtins */
-#define SWAP 1
+#define SWAP 0
 #endif
 
 #ifndef STEP /* step-by-step tracing */
@@ -174,7 +178,7 @@ static void init(void)
 	size = 0ull;
 }
 
-#if !__MMX__
+#if !VECT
 #define ROTL(w,s) ((w) << (s) | (w) >> (64-s))
 #define ROTR(w,s) ((w) >> (s) | (w) << (64-s))
 #define SHR(w,s) ((w) >> (s))
@@ -198,7 +202,7 @@ static void init(void)
 static void next(const BYTE ba[NB])
 {
 	int i,j;
-#if !__MMX__
+#if !VECT
 	WORD W[NS];
 	WORD H[NO];
 	WORD t1,t2;
@@ -225,7 +229,7 @@ static void next(const BYTE ba[NB])
 #if STEP
 	print(W,NI,"input");
 #endif
-#if !__MMX__
+#if !VECT
 	for (i = NI; i < NS; ++i)
 		W[i] = SSIG1(W[i-2]) + W[i-7] + SSIG0(W[i-15]) + W[i-16];
 	for (i = 0; i < NO; ++i)
@@ -245,7 +249,7 @@ static void next(const BYTE ba[NB])
 #define f H[5]
 #define g H[6]
 #define h H[7]
-#if !__MMX__
+#if !VECT
 		t1 = h + BSIG1(e) + CHO(e,f,g) + K[i] + W[i];
 		t2 = BSIG0(a) + MAJ(a,b,c);
 #else
@@ -255,7 +259,7 @@ static void next(const BYTE ba[NB])
 		h = g;
 		g = f;
 		f = e;
-#if !__MMX__
+#if !VECT
 		e = d + t1;
 #else
 		e = _mm_add_si64(d,t1);
@@ -263,7 +267,7 @@ static void next(const BYTE ba[NB])
 		d = c;
 		c = b;
 		b = a;
-#if !__MMX__
+#if !VECT
 		a = t1 + t2;
 #else
 		a = _mm_add_si64(t1,t2);
@@ -280,7 +284,7 @@ static void next(const BYTE ba[NB])
 		print(H,NO,"round");
 #endif
 	}
-#if !__MMX__
+#if !VECT
 	for (i = 0; i < NO; ++i)
 		accu[i] += H[i];
 #else
