@@ -58,7 +58,7 @@
 %xdefine ctx arg1
 %xdefine buf arg2
 %xdefine cnt arg3
-%macro	REGALLOC 0
+%macro REGALLOC 0
 %xdefine A ecx
 %xdefine B esi
 %xdefine C edi
@@ -71,11 +71,11 @@
 %xdefine HASH_PTR r9
 %xdefine BUFFER_PTR r10
 %xdefine BUFFER_END r11
-%xdefine W_TMPxmm0
+%xdefine W_TMP xmm0
 %xdefine W_TMP2 xmm9
-%xdefine W0xmm1
-%xdefine W4xmm2
-%xdefine W8xmm3
+%xdefine W0 xmm1
+%xdefine W4 xmm2
+%xdefine W8 xmm3
 %xdefine W12 xmm4
 %xdefine W16 xmm5
 %xdefine W20 xmm6
@@ -92,7 +92,7 @@
 ;               =1 - function implements multiple64-byte blocks hash
 ;3rd function's argument is a number, greater 0, of 64-byte blocks to calc hash for
 ;
-%macroSHA1_VECTOR_ASM2
+%macro	SHA1_VECTOR_ASM 2
 	align	4096
 %1:
 	push	rbx
@@ -152,15 +152,15 @@ REGALLOC
 	mov D, [HASH_PTR+12]
 	mov E, [HASH_PTR+16]
 %assign i 0
-%repW_PRECALC_AHEAD
-W_PRECALC i
+%rep W_PRECALC_AHEAD
+	W_PRECALC i
 %assign i i+1
 %endrep
 %xdefine F F1
 %if (%1 == 1) ;; code loops through more than one block
 %%_loop:
-	cmp BUFFER_PTR, K_BASE;; we use K_BASE value as a signal of a last block,
-	jne %%_begin;; it is set below by: cmovae BUFFER_PTR, K_BASE
+	cmp BUFFER_PTR, K_BASE	;; we use K_BASE value as a signal of a last block,
+	jne %%_begin		;; it is set below by: cmovae BUFFER_PTR, K_BASE
 	jmp %%_end
 	align 32
 %%_begin:
@@ -255,17 +255,17 @@ W_PRECALC i
 %macro W_PRECALC 1
 %xdefine i (%1)
 %if (i < 20)
-%xdefine K_XMM0
+%xdefine K_XMM 0
 %elif (i < 40)
-%xdefine K_XMM16
+%xdefine K_XMM 16
 %elif (i < 60)
-%xdefine K_XMM32
+%xdefine K_XMM 32
 %else
-%xdefine K_XMM48
+%xdefine K_XMM 48
 %endif
 %if (i<16 || (i>=80 && i<(80 + W_PRECALC_AHEAD)))
 %if (W_NO_TAIL_PRECALC == 0)
-%xdefine i ((%1) % 80);; pre-compute for the next iteration
+%xdefine i ((%1) % 80) ;; pre-compute for the next iteration
 %if (i == 0)
 	W_PRECALC_RESET
 %endif
@@ -278,30 +278,30 @@ W_PRECALC i
 %endif
 %endmacro
 %macro W_PRECALC_RESET 0
-%xdefineW W0
-%xdefineW_minus_04W4
-%xdefineW_minus_08W8
-%xdefineW_minus_12W12
-%xdefineW_minus_16W16
-%xdefineW_minus_20W20
-%xdefineW_minus_24W24
-%xdefineW_minus_28W28
-%xdefineW_minus_32W
+%xdefine W W0
+%xdefine W_minus_04 W4
+%xdefine W_minus_08 W8
+%xdefine W_minus_12 W12
+%xdefine W_minus_16 W16
+%xdefine W_minus_20 W20
+%xdefine W_minus_24 W24
+%xdefine W_minus_28 W28
+%xdefine W_minus_32 W
 %endmacro
 %macro W_PRECALC_ROTATE 0
-%xdefineW_minus_32W_minus_28
-%xdefineW_minus_28W_minus_24
-%xdefineW_minus_24W_minus_20
-%xdefineW_minus_20W_minus_16
-%xdefineW_minus_16W_minus_12
-%xdefineW_minus_12W_minus_08
-%xdefineW_minus_08W_minus_04
-%xdefineW_minus_04W
-%xdefineW W_minus_32
+%xdefine W_minus_32 W_minus_28
+%xdefine W_minus_28 W_minus_24
+%xdefine W_minus_24 W_minus_20
+%xdefine W_minus_20 W_minus_16
+%xdefine W_minus_16 W_minus_12
+%xdefine W_minus_12 W_minus_08
+%xdefine W_minus_08 W_minus_04
+%xdefine W_minus_04 W
+%xdefine W W_minus_32
 %endmacro
 %xdefine W_PRECALC_AHEAD 16
 %xdefine W_NO_TAIL_PRECALC 0
-%xdefine xmm_movmovdqa
+%xdefine xmm_mov movdqa
 %macro W_PRECALC_00_15 0
 ;; message scheduling pre-compute for rounds 0-15
 %if ((i & 3) == 0);; blended SSE and ALU instruction scheduling, 1 vector iteration per 4 rounds
@@ -310,9 +310,9 @@ W_PRECALC i
 	pshufb W_TMP, XMM_SHUFB_BSWAP
 	movdqa W, W_TMP
 %elif ((i & 3) == 2)
-	padddW_TMP, [K_BASE]
+	paddd W_TMP, [K_BASE]
 %elif ((i & 3) == 3)
-	movdqa[WK(i&~3)], W_TMP
+	movdqa [WK(i&~3)], W_TMP
 	W_PRECALC_ROTATE
 %endif
 %endmacro
@@ -324,30 +324,30 @@ W_PRECALC i
 ;; "brute force" vectorization for rounds 16-31 only due to w[i]->w[i-3] dependency
 ;;
 %if ((i & 3) == 0);; blended SSE and ALU instruction scheduling, 1 vector iteration per 4 rounds
-	movdqaW, W_minus_12
+	movdqa W, W_minus_12
 	palignr W, W_minus_16, 8 ;; w[i-14]
-	movdqaW_TMP, W_minus_04
-	psrldqW_TMP, 4 ;; w[i-3]
-	pxorW, W_minus_08
+	movdqa W_TMP, W_minus_04
+	psrldq W_TMP, 4 ;; w[i-3]
+	pxor W, W_minus_08
 %elif ((i & 3) == 1)
-	pxorW_TMP, W_minus_16
-	pxorW, W_TMP
-	movdqaW_TMP2, W
-	movdqaW_TMP, W
-	pslldqW_TMP2, 12
+	pxor W_TMP, W_minus_16
+	pxor W, W_TMP
+	movdqa W_TMP2, W
+	movdqa W_TMP, W
+	pslldq W_TMP2, 12
 %elif ((i & 3) == 2)
 	psrld W, 31
 	pslld W_TMP, 1
 	por W_TMP, W
-	movdqaW, W_TMP2
+	movdqa W, W_TMP2
 	psrld W_TMP2, 30
 	pslld W, 2
 %elif ((i & 3) == 3)
-	pxorW_TMP, W
-	pxorW_TMP, W_TMP2
-	movdqaW, W_TMP
+	pxor W_TMP, W
+	pxor W_TMP, W_TMP2
+	movdqa W, W_TMP
 	paddd W_TMP, [K_BASE + K_XMM]
-	movdqa[WK(i&~3)],W_TMP
+	movdqa [WK(i&~3)],W_TMP
 	W_PRECALC_ROTATE
 %endif
 %endmacro
@@ -357,21 +357,21 @@ W_PRECALC i
 ;; allows more efficient vectorization since w[i]=>w[i-3] dependency is broken
 ;;
 %if ((i & 3) == 0);; blended SSE and ALU instruction scheduling, 1 vector iteration per 4 rounds
-	movdqaW_TMP, W_minus_04
-	pxorW, W_minus_28 ;; W is W_minus_32 before xor
+	movdqa W_TMP, W_minus_04
+	pxor W, W_minus_28 ;; W is W_minus_32 before xor
 	palignr W_TMP, W_minus_08, 8
 %elif ((i & 3) == 1)
-	pxorW, W_minus_16
-	pxorW, W_TMP
-	movdqaW_TMP, W
+	pxor W, W_minus_16
+	pxor W, W_TMP
+	movdqa W_TMP, W
 %elif ((i & 3) == 2)
 	psrld W, 30
 	pslld W_TMP, 2
 	por W_TMP, W
 %elif ((i & 3) == 3)
-	movdqaW, W_TMP
+	movdqa W, W_TMP
 	paddd W_TMP, [K_BASE + K_XMM]
-	movdqa[WK(i&~3)],W_TMP
+	movdqa [WK(i&~3)],W_TMP
 	W_PRECALC_ROTATE
 %endif
 %endmacro
@@ -383,21 +383,21 @@ W_PRECALC i
 ;; E = D
 ;; B = TEMP
 	W_PRECALC (%6 + W_PRECALC_AHEAD)
-	F%2, %3, %4 ;; F returns result in T1
-	add%5, [WK(%6)]
-	rol%2, 30
-	movT2, %1
-	add%4, [WK(%6 + 1)]
-	rolT2, 5
-	add%5, T1
+	F %2, %3, %4 ;; F returns result in T1
+	add %5, [WK(%6)]
+	rol %2, 30
+	mov T2, %1
+	add %4, [WK(%6 + 1)]
+	rol T2, 5
+	add %5, T1
 	W_PRECALC (%6 + W_PRECALC_AHEAD + 1)
-	addT2, %5
-	mov%5, T2
-	rolT2, 5
-	add%4, T2
-	F%1, %2, %3;; F returns result in T1
-	add%4, T1
-	rol%1, 30
+	add T2, %5
+	mov %5, T2
+	rol T2, 5
+	add %4, T2
+	F %1, %2, %3 ;; F returns result in T1
+	add %4, T1
+	rol %1, 30
 ;; write:%1, %2
 ;; rotate: %1<=%4, %2<=%5, %3<=%1, %4<=%2, %5<=%3
 %endmacro
@@ -421,30 +421,30 @@ bswap_shufb_ctl:
 	DD 0c0d0e0fh
 ;; dispatch pointer, points to the init routine for the first invocation
 sha1_update_intel_dispatched:
-	DQsha1_update_intel_init_
+	DQ sha1_update_intel_init_
 ;;----------------------
 	section .text align=4096
 SHA1_VECTOR_ASM sha1_update_intel_ssse3_, multiblock
 	align 32
 sha1_update_intel_init_: ;; we get here with the first time invocation
-	callsha1_update_intel_dispacth_init_
+	call sha1_update_intel_dispacth_init_
 INTEL_SHA1_UPDATE_FUNCNAME:;; we get here after init
 	jmp qword [sha1_update_intel_dispatched]
 ;; CPUID feature flag based dispatch
 sha1_update_intel_dispacth_init_:
-	pushrax
-	pushrbx
-	pushrcx
-	pushrdx
-	pushrsi
+	push rax
+	push rbx
+	push rcx
+	push rdx
+	push rsi
 	lea rsi, [INTEL_SHA1_UPDATE_DEFAULT_DISPATCH]
 	mov eax, 1
 	cpuid
-	testecx, 0200h;; SSSE3 support, CPUID.1.ECX[bit 9]
-	jz_done
-	lea rsi, [sha1_update_intel_ssse3_]
+	test	ecx, 0200h;; SSSE3 support, CPUID.1.ECX[bit 9]
+	jz	_done
+	lea	rsi, [sha1_update_intel_ssse3_]
 _done:
-	mov [sha1_update_intel_dispatched], rsi
+	mov	[sha1_update_intel_dispatched], rsi
 	pop rsi
 	pop rdx
 	pop rcx
@@ -456,7 +456,7 @@ _done:
 ;; and code was invoked on a non-SSSE3 supporting CPU, dispatch handles this
 ;; failure in a safest way - jumps to the stub function with UD2 instruction below
 sha1_intel_non_ssse3_cpu_stub_:
-	ud2 ;; in the case no default SHA-1 was provided non-SSSE3 CPUs safely fail here
+	ud2	;; in the case no default SHA-1 was provided non-SSSE3 CPUs safely fail here
 	ret
 ; END
 ;----------------------
