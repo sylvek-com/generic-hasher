@@ -103,7 +103,7 @@ _m_to_int64 (__m64 __i)
 #define WORD unsigned long long
 #define SIZE unsigned long long
 #define SW (int)sizeof(WORD)
-#define SS (int)sizeof(SIZE)
+#define SS (int)sizeof(SIZE)*2
 #define NI 16
 #define NO 8
 #define NS 80
