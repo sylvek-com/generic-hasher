@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define STEP 0
+#define STEP 1
 #define BYTE unsigned char
 #define WORD unsigned int
 #define SIZE unsigned long long
@@ -76,12 +76,8 @@ static void next(const BYTE ba[NI*SW])
 #endif
 	for (i = 0; i < NO; ++i)
 		H[i] = accu[i];
-#define a H[0]
-#define b H[1]
-#define c H[2]
-#define d H[3]
-#define x W
 #if 0
+
         /* Round 1. */
         /* Let [abcd k s] denote the operation
              a = (a + F(b,c,d) + X[k]) <<< s. */
@@ -110,6 +106,12 @@ static void next(const BYTE ba[NI*SW])
         [ABCD  3  3]  [DABC 11  9]  [CDAB  7 11]  [BCDA 15 15]
 
 #else
+
+#define a H[0]
+#define b H[1]
+#define c H[2]
+#define d H[3]
+#define x W
 
 /*
  */ 
@@ -142,15 +144,24 @@ static void next(const BYTE ba[NI*SW])
 #define FF(a, b, c, d, x, s) { \
     (a) += F ((b), (c), (d)) + (x); \
     (a) = ROTATE_LEFT ((a), (s)); \
+    DUMP(F); \
   }
 #define GG(a, b, c, d, x, s) { \
     (a) += G ((b), (c), (d)) + (x) + 0x5a827999u; \
     (a) = ROTATE_LEFT ((a), (s)); \
+    DUMP(G); \
   }
 #define HH(a, b, c, d, x, s) { \
     (a) += H ((b), (c), (d)) + (x) + 0x6ed9eba1u; \
     (a) = ROTATE_LEFT ((a), (s)); \
+    DUMP(H); \
   }
+
+#if STEP
+#define DUMP(X) print(H,NO,#X"-round");
+#else
+#define DUMP(X)
+#endif
 
   /* Round 1 */
   FF (a, b, c, d, x[ 0], S11); /* 1 */
@@ -206,16 +217,12 @@ static void next(const BYTE ba[NI*SW])
   HH (c, d, a, b, x[ 7], S33); /* 47 */
   HH (b, c, d, a, x[15], S34); /* 48 */
 
-#endif
-
 #undef a
 #undef b
 #undef c
 #undef d
 #undef x
 
-#if STEP
-		print(H,NO,"round");
 #endif
 	for (i = 0; i < NO; ++i)
 		accu[i] += H[i];

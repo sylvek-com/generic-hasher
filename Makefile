@@ -7,6 +7,7 @@
 # masher: MD4
 # lasher: MD5
 # dasher: RIPEMD-{0,128,160}
+# kasher: generic
 #
 
 #
@@ -28,7 +29,7 @@ LINK.c = $(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $(TARGET_ARCH)
 CC=gcc
 RM=rm -f
 MV=mv -f
-CFLAGS=-Wall -Wextra -Wno-error -g
+CFLAGS=-Wall -Wextra -Werror -g -fsanitize=undefined
 
 # general recipe for generating benchmarking
 # that preserves the generated assembly file
@@ -61,7 +62,7 @@ endef
 # begin of specific rules
 #
 
-ALL=hasher basher washer masher lasher dasher
+ALL=hasher basher washer masher lasher dasher kasher
 
 DB=dasher-5m dasher-5v dasher-2m dasher-2v
 WB=washer-5m washer-5v washer-2m washer-2v

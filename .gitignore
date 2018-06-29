@@ -6,6 +6,7 @@
 ??asher
 ??asher-*
 a.out
+sphsum
 #assembly files
 *.s
 *.asm
