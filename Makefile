@@ -29,7 +29,7 @@ LINK.c = $(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $(TARGET_ARCH)
 CC=gcc
 RM=rm -f
 MV=mv -f
-CFLAGS=-Wall -Wextra -Werror -g -fsanitize=undefined
+CFLAGS=-Wall -Wextra -Werror -g -fsanitize=undefined -mx32
 
 # general recipe for generating benchmarking
 # that preserves the generated assembly file

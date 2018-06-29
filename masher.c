@@ -142,8 +142,11 @@ static void next(const BYTE ba[NI*SW])
 /* Rotation is separate from addition to prevent recomputation */
 
 #define FF(a, b, c, d, x, s) { \
+	printf("%08x %08x %08x %08x %08x %2d\n",a,b,c,d,x,s); \
     (a) += F ((b), (c), (d)) + (x); \
+	printf("%08x %08x %08x ",(F((b),(c),(d))),(F((b),(c),(d))+x),a); \
     (a) = ROTATE_LEFT ((a), (s)); \
+	printf("%08x\n",a); \
     DUMP(F); \
   }
 #define GG(a, b, c, d, x, s) { \

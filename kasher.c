@@ -51,25 +51,25 @@ static void print(const WORD wa[],int nw,const char sa[])
 #define KG 0x5A827999u
 #define KH 0x6ED9EBA1u
 
-#define PF(i) (i)
-#define PG(i) (((i&12) >> 2) | ((i&03) << 2))
-#define PH(i) (((i&8) >> 3) | ((i&4) >> 1) | ((i&2) << 1) | ((i&1) << 3))
+#define PF(i) ((i)&15)
+#define PG(i) ((((i)&12) >> 2) | (((i)&03) << 2))
+#define PH(i) ((((i)&8) >> 3) | (((i)&4) >> 1) | (((i)&2) << 1) | (((i)&1) << 3))
 
-#define RF(i) (((2*i-6)*i+16)*i+9)/3
-#define RG(i) (((-i+6)*i+1)*i+9)/3
-#define RH(i) (((i-5)*i+10)*i+3)
+#define RF(i) (((2*(i)-6)*(i)+16)*(i)+9)/3
+#define RG(i) (((-(i)+6)*(i)+1)*(i)+9)/3
+#define RH(i) ((((i)-5)*(i)+10)*(i)+3)
 
 #define F(x,y,z) OR(AND(x,y),ANDNOT(x,z)) // Mux
-#define G(x,y,z) OR(AND(x,y),OR(AND(y,z),AND(x,z))) // Maj
+#define G(x,y,z) OR(AND(x,y),OR(AND(x,z),AND(y,z))) // Maj
 #define H(x,y,z) XOR(x,XOR(y,z)) // Par
 
 #define OR(l,r) ((l) | (r))
 #define XOR(l,r) ((l) ^ (r))
 #define AND(l,r) ((l) & (r))
-#define ANDNOT(l,r) ((l) | ~(r))
+#define ANDNOT(l,r) (~(l) & (r))
 #define ADD(l,r) ((l) + (r))
 
-#define ROTL(w,s) ((w) << (s) | (w) >> (32-s))
+#define ROTL(w,s) ((w) << (s) | (w) >> (32-(s)))
 
 static void next(const BYTE ba[NB])
 {
@@ -94,24 +94,30 @@ static void next(const BYTE ba[NB])
 		H[i] = accu[i],
 		R[i] = H[i];
 	for (i = 0*NI; i < 1*NI; ++i) {
-		R[i+4] = ADD(R[i],ADD(F(R[i+3],R[i+2],R[i+1]),ADD(W[PF(i)],KF)));
-		R[i+4] = ROTL(R[i+4],RF(i%4));
+		WORD a = R[i],b = R[i+1],c = R[i+2],d = R[i+3],x = W[PF(i)];
+		WORD f = F(b,c,d); 
+printf("%08x %08x %08x %08x %08x %2d\n",a,b,c,d,x,RF(i%4));
+		a = ADD(a,ADD(F(b,c,d),ADD(x,KF)));
+printf("%08x %08x %08x ",f,f+x,a);
+		a = ROTL(a,RF(i%4));
+printf("%08x\n",a);
+		R[i+4] = a;
 #if STEP
-		print(&R[i+4],NO,"F-round");
+		print(&R[i+1],NO,"F-round");
 #endif
 	}
 	for (i = 1*NI; i < 2*NI; ++i) {
 		R[i+4] = ADD(R[i],ADD(G(R[i+3],R[i+2],R[i+1]),ADD(W[PG(i)],KG)));
 		R[i+4] = ROTL(R[i+4],RG(i%4));
 #if STEP
-		print(&R[i+4],NO,"G-round");
+		print(&R[i+1],NO,"G-round");
 #endif
 	}
 	for (i = 2*NI; i < 3*NI; ++i) {
 		R[i+4] = ADD(R[i],ADD(H(R[i+3],R[i+2],R[i+1]),ADD(W[PH(i)],KH)));
 		R[i+4] = ROTL(R[i+4],RH(i%4));
 #if STEP
-		print(&R[i+4],NO,"H-round");
+		print(&R[i+1],NO,"H-round");
 #endif
 	}
 	for (i = 0; i < NO; ++i)
@@ -158,24 +164,24 @@ static void init(void)
 	for (i = 0; i < NO; ++i)
 		accu[i] = iv[i];
 	size = 0ull;
-#if STEP
-	for (i = 0; i < NI; ++i)
-		printf("%2d,",PF(i));
+#if STEP && 0
+	for (i = 0*NI; i < 1*NI; ++i)
+		printf("%2d,",PF(i%NI));
 	puts("");
-	for (i = 0; i < NI; ++i)
-		printf("%2d,",PG(i));
+	for (i = 1*NI; i < 2*NI; ++i)
+		printf("%2d,",PG(i%NI));
 	puts("");
-	for (i = 0; i < NI; ++i)
-		printf("%2d,",PH(i));
+	for (i = 2*NI; i < 3*NI; ++i)
+		printf("%2d,",PH(i%NI));
 	puts("");
-	for (i = 0; i < 4; ++i)
-		printf("%2d,",RF(i));
+	for (i = 0*NI; i < 1*NI; ++i)
+		printf("%2d,",RF(i%4));
 	puts("");
-	for (i = 0; i < 4; ++i)
-		printf("%2d,",RG(i));
+	for (i = 1*NI; i < 2*NI; ++i)
+		printf("%2d,",RG(i%4));
 	puts("");
-	for (i = 0; i < 4; ++i)
-		printf("%2d,",RH(i));
+	for (i = 2*NI; i < 3*NI; ++i)
+		printf("%2d,",RH(i%4));
 	puts("");
 #endif
 }
